@@ -1,0 +1,33 @@
+fabrication_methods: This table is referenced by the materials table.
+
+fabrication_method_metadata: This table can be filled after fabrication_methods.
+
+materials: This table can be filled after fabrication_methods.
+
+material_metadata: This table can be filled after materials.
+
+panels: This table is referenced by the samples table.
+
+samples: This table can be filled after panels.
+
+measurementtypes: This table is referenced by the measurements table.
+
+measurements: This table can be filled after measurementtypes.
+
+measurement_type_metadata: This table can be filled after measurementtypes.
+
+datasets: This table is referenced by the datasetmeasurements table.
+
+datasetmeasurements: This table can be filled after datasets and measurements.
+
+measurement_metadata: This table can be filled after measurements.
+
+sample_measurements: This table can be filled after samples and measurements.
+
+panel_metadata: This table can be filled after panels.
+
+measurement_files: This table can be filled after measurements.
+
+measurement_files_metadata: This table can be filled after measurement_files.
+
+file_registrations: This table can be filled after measurement_files.
