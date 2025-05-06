@@ -72,7 +72,7 @@ After installation, you can import and use the module in your Python scripts or 
 import dbtools as db
 
 # Connect to the database
-conn = db.connect()
+conn = db.connect('path_to_env/.env')
 
 # Retrieve data
 samples = db.get_data('samples')
@@ -88,7 +88,7 @@ This approach makes your code more portable and maintainable compared to using r
 
 ### Environment Configuration
 
-1. Create an `.env` file in the root directory based on the provided example:
+1. Create an `.env` file in the root directory based (if the file is not in the directory its path may be required by some functions) on the provided example:
 
 DB_HOST=airbus-pc DB_NAME=UTvsXCT DB_USER=username DB_PASSWORD=password
 

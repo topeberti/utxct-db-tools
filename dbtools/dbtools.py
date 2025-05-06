@@ -4,7 +4,7 @@ import pandas as pd
 from dotenv import load_dotenv
 import os
 
-def load_credentials():
+def load_credentials(env_path = None):
     """
     Loads the database credentials from a .env file.
 
@@ -14,8 +14,11 @@ def load_credentials():
     Returns:
     dict: A dictionary containing the database credentials.
     """
-    
-    load_dotenv()
+    if env_path is not None:
+        # Load the environment variables from the specified .env file
+        load_dotenv(env_path)
+    else:
+        load_dotenv()
 
     return {
         'host': os.getenv('DB_HOST'),
