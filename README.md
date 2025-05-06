@@ -18,7 +18,7 @@ The system is designed to store and manage various types of data including:
 
 - Python 3.x
 - PostgreSQL database
-- Required Python packages (install via pip):
+- Required Python packages:
   - psycopg2
   - numpy
   - pandas
@@ -26,12 +26,25 @@ The system is designed to store and manage various types of data including:
   - tabulate
   - tqdm
 
+#### Installing Python Dependencies
+
+You can install all required packages using the provided `requirements.txt` file:
+
+```bash
+pip install -r requirements.txt
+```
+
+Alternatively, you can install packages individually:
+
+```bash
+pip install psycopg2 numpy pandas tifffile tabulate tqdm
+```
+
 ### Environment Configuration
 
 1. Create an `.env` file in the root directory based on the provided example:
 
 DB_HOST=airbus-pc DB_NAME=UTvsXCT DB_USER=username DB_PASSWORD=password
-
 
 2. Replace the placeholder values with your actual database credentials.
 

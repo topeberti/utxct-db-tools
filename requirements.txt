@@ -1,2 +1,6 @@
 psycopg2
-python-dotenv
+numpy
+pandas
+tifffile
+tabulate
+tqdm
