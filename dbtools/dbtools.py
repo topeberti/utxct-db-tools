@@ -28,7 +28,7 @@ def load_credentials(env_path = None):
     }
 
 # Create a connection to the PostgreSQL database
-def connect():
+def connect(env_path = None):
     """
     Establishes a connection to the PostgreSQL database.
 
@@ -42,7 +42,7 @@ def connect():
     conn: A connection object to the PostgreSQL database.
     """
 
-    credentials = load_credentials()
+    credentials = load_credentials(env_path)
 
     conn = psycopg2.connect(
         host=credentials['host'],
