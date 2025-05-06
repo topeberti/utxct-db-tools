@@ -63,6 +63,29 @@ Installing the repository as a Python module provides several advantages:
    pip install --upgrade git+https://github.com/topeberti/utxct-db-tools.git
    ```
 
+#### Using the Installed Module
+
+After installation, you can import and use the module in your Python scripts or notebooks:
+
+```python
+# Import the main database tools module
+import utxct_db_tools.dbtools as db
+
+# Connect to the database
+conn = db.connect()
+
+# Retrieve data
+samples = db.get_data('samples')
+
+# Get data with metadata
+samples_with_metadata = db.get_data_metadata('samples')
+
+# Close the connection when done
+conn.close()
+```
+
+This approach makes your code more portable and maintainable compared to using relative imports.
+
 ### Environment Configuration
 
 1. Create an `.env` file in the root directory based on the provided example:
@@ -101,3 +124,4 @@ try:
     print("Connected to the database")
 except Exception as error:
     print(error)
+```
