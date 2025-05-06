@@ -12,6 +12,24 @@ The system is designed to store and manage various types of data including:
 - Dataset information
 - Measurement registrations
 
+## Project Structure
+
+- `dbtools/`: Contains database utility functions
+- `load/`: Notebooks for data loading
+  - `materials.ipynb`: For loading material information
+  - `panel.ipynb`: For loading panel data
+  - `sample.ipynb`: For loading sample information
+  - `measurements_ut.ipynb`: For loading UT measurement data
+  - `measurements_xct.ipynb`: For loading XCT measurement data
+  - `datasets.ipynb`: For loading dataset information
+  - `registrations.ipynb`: For loading measurement registrations
+- `retrieve/`: Notebooks for data retrieval
+  - `data.ipynb`: Basic data retrieval
+  - `data_metadata.ipynb`: Retrieval with metadata
+  - `data_relation.ipynb`: Retrieval of related data
+- `migration/`: Notebooks for data migration
+- `delete/`: Notebooks for data deletion examples
+
 ## Setup
 
 ### Prerequisites
@@ -39,6 +57,14 @@ Alternatively, you can install packages individually:
 ```bash
 pip install psycopg2 numpy pandas tifffile tabulate tqdm
 ```
+
+### Environment Configuration
+
+1. Create an `.env` file in the root directory based (if the file is not in the directory its path may be required by some functions) on the provided example:
+
+DB_HOST=airbus-pc DB_NAME=UTvsXCT DB_USER=username DB_PASSWORD=password
+
+2. Replace the placeholder values with your actual database credentials.
 
 ### Installing as a Python Module
 
@@ -85,32 +111,6 @@ conn.close()
 ```
 
 This approach makes your code more portable and maintainable compared to using relative imports.
-
-### Environment Configuration
-
-1. Create an `.env` file in the root directory based (if the file is not in the directory its path may be required by some functions) on the provided example:
-
-DB_HOST=airbus-pc DB_NAME=UTvsXCT DB_USER=username DB_PASSWORD=password
-
-2. Replace the placeholder values with your actual database credentials.
-
-## Project Structure
-
-- `dbtools/`: Contains database utility functions
-- `load/`: Notebooks for data loading
-  - `materials.ipynb`: For loading material information
-  - `panel.ipynb`: For loading panel data
-  - `sample.ipynb`: For loading sample information
-  - `measurements_ut.ipynb`: For loading UT measurement data
-  - `measurements_xct.ipynb`: For loading XCT measurement data
-  - `datasets.ipynb`: For loading dataset information
-  - `registrations.ipynb`: For loading measurement registrations
-- `retrieve/`: Notebooks for data retrieval
-  - `data.ipynb`: Basic data retrieval
-  - `data_metadata.ipynb`: Retrieval with metadata
-  - `data_relation.ipynb`: Retrieval of related data
-- `migration/`: Notebooks for data migration
-- `delete/`: Notebooks for data deletion examples
 
 ## Usage Examples
 
