@@ -69,7 +69,7 @@ After installation, you can import and use the module in your Python scripts or 
 
 ```python
 # Import the main database tools module
-import utxct_db_tools.dbtools as db
+import dbtools as db
 
 # Connect to the database
 conn = db.connect()
