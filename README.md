@@ -61,9 +61,12 @@ pip install psycopg2 numpy pandas tifffile tabulate tqdm
 ### Environment Configuration
 
 1. Create an `.env` file in the root directory based (if the file is not in the directory its path may be required by some functions) on the provided example:
-
-DB_HOST=airbus-pc DB_NAME=UTvsXCT DB_USER=username DB_PASSWORD=password
-
+```python
+DB_HOST=airbus-pc 
+DB_NAME=UTvsXCT 
+DB_USER=username 
+DB_PASSWORD=password
+```
 2. Replace the placeholder values with your actual database credentials.
 
 ### Installing as a Python Module
