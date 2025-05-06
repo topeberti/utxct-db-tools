@@ -53,28 +53,6 @@ DB_HOST=airbus-pc DB_NAME=UTvsXCT DB_USER=username DB_PASSWORD=password
 - `migration/`: Notebooks for data migration
 - `delete/`: Notebooks for data deletion examples
 
-## Loading Order
-
-For proper operation, data should be loaded in the following order:
-
-1. Fabrication methods
-2. Fabrication method metadata
-3. Materials
-4. Material metadata
-5. Panels
-6. Samples
-7. Measurement types
-8. Measurements
-9. Measurement type metadata
-10. Datasets
-11. Dataset measurements
-12. Measurement metadata
-13. Sample measurements
-14. Panel metadata
-15. Measurement files
-16. Measurement files metadata
-17. File registrations
-
 ## Usage Examples
 
 ### Connecting to the Database
