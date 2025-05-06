@@ -241,7 +241,7 @@ def get_data_metadata(table_name):
     return data
 
 # Table + parent + metadata loading
-def data_parent(table_name, parent_name, column_parent_id_name):
+def data_parent(table_name, parent_name, column_parent_id_name = None):
     """
     Loads data, its metadata, and parent data from specified tables in the database.
 
@@ -256,6 +256,10 @@ def data_parent(table_name, parent_name, column_parent_id_name):
     data = get_data_metadata(table_name)
 
     parent_data = get_data_metadata(parent_name)
+
+    if column_parent_id_name is None:
+
+        column_parent_id_name = parent_name[:-1] + '_id'
 
     column_parent_id_name = column_parent_id_name + '_' + table_name[:-1]
 
