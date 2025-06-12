@@ -428,12 +428,12 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
     
     # Create the metadata parameters dictionary
     metadata_parameters = [
-        {table_name[:-1] + '_id': row_id, 'key': 'height', 'value': str(height), 'type': 'int'},
-        {table_name[:-1] + '_id': row_id, 'key': 'width', 'value': str(width), 'type': 'int'},
-        {table_name[:-1] + '_id': row_id, 'key': 'depth', 'value': str(depth), 'type': 'int'},
-        {table_name[:-1] + '_id': row_id, 'key': 'dtype', 'value': dtype, 'type': 'str'},
-        {table_name[:-1] + '_id': row_id, 'key': 'file_type', 'value': file_type, 'type': 'str'},
-        {table_name[:-1] + '_id': row_id, 'key': 'signal_type', 'value': signal_type, 'type': 'str'},
+        {table_name[:-1] + '_id': row_id, 'key': 'height', 'value': str(height), 'type': 'cardinal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'width', 'value': str(width), 'type': 'cardinal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'depth', 'value': str(depth), 'type': 'cardinal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'dtype', 'value': dtype, 'type': 'nominal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'file_type', 'value': file_type, 'type': 'nominal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'signal_type', 'value': signal_type, 'type': 'nominal'},
         {table_name[:-1] + '_id': row_id, 'key': 'axes_order', 'value': str(axes_order), 'type': 'list'}
     ]
     
@@ -443,7 +443,7 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
             table_name[:-1] + '_id': row_id, 
             'key': 'transformations', 
             'value': transformations, 
-            'type': 'str'
+            'type': 'text'
         })
     
     metadata_table_name = 'ut_measurement_metadata'
@@ -578,22 +578,22 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
     
     # Create the metadata parameters dictionary
     metadata_parameters = [
-        {table_name[:-1] + '_id': row_id, 'key': 'height', 'value': str(height), 'type': 'int'},
-        {table_name[:-1] + '_id': row_id, 'key': 'width', 'value': str(width), 'type': 'int'},
-        {table_name[:-1] + '_id': row_id, 'key': 'depth', 'value': str(depth), 'type': 'int'},
-        {table_name[:-1] + '_id': row_id, 'key': 'dtype', 'value': dtype, 'type': 'str'},
-        {table_name[:-1] + '_id': row_id, 'key': 'file_type', 'value': file_type, 'type': 'str'},
-        {table_name[:-1] + '_id': row_id, 'key': 'aligned', 'value': str(aligned), 'type': 'bool'},
-        {table_name[:-1] + '_id': row_id, 'key': 'equalized', 'value': str(equalized), 'type': 'bool'}
+        {table_name[:-1] + '_id': row_id, 'key': 'height', 'value': str(height), 'type': 'cardinal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'width', 'value': str(width), 'type': 'cardinal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'depth', 'value': str(depth), 'type': 'cardinal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'dtype', 'value': dtype, 'type': 'string'},
+        {table_name[:-1] + '_id': row_id, 'key': 'file_type', 'value': file_type, 'type': 'string'},
+        {table_name[:-1] + '_id': row_id, 'key': 'aligned', 'value': str(aligned), 'type': 'boolean'},
+        {table_name[:-1] + '_id': row_id, 'key': 'equalized', 'value': str(equalized), 'type': 'boolean'}
     ]
     
     # Add transformations metadata if provided
     if transformations is not None:
         metadata_parameters.append({
-            table_name[:-1] + '_id': row_id, 
-            'key': 'transformations', 
-            'value': transformations, 
-            'type': 'str'
+            table_name[:-1] + '_id': row_id,
+            'key': 'transformations',
+            'value': transformations,
+            'type': 'text'
         })
     
     metadata_table_name = 'xct_measurement_metadata'
@@ -625,6 +625,138 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
             load_table(cursor, relational_table_name, relational_parameters)
         except Exception as e:
             print(f"Error loading sample-measurement relationship: {e}")
+            conn.rollback()
+            cursor.close()
+            return
+    
+    # Commit the transaction if everything is successful
+    conn.commit()
+    
+    # Close the cursor
+    cursor.close()
+
+
+def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shape, measurement_paths, description=None):
+    """
+    Load a dataset into the database, including its metadata and measurement relationships.
+    
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    file_path : str
+        The path to the dataset file.
+    rows : int
+        Number of rows in the dataset.
+    patch_size : str
+        Patch size of the dataset.
+    targets : list
+        List of targets for the dataset.
+    reconstruction_shape : tuple
+        Shape to see the dataset as an image.
+    measurement_paths : list
+        List of measurement file paths associated with this dataset.
+    description : str, optional
+        Dataset description.
+        
+    Returns:
+    --------
+    None
+        This function doesn't return a value, but prints success or error messages.
+        
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    """
+    # Validate input parameters
+    assert isinstance(file_path, str) and file_path, "File path must be a non-empty string"
+    assert isinstance(rows, int) and rows > 0, "Rows must be a positive integer"
+    assert isinstance(patch_size, str), "Patch size must be a string"
+    assert isinstance(targets, list) and all(isinstance(target, str) for target in targets), "Targets must be a list of strings"
+    assert isinstance(reconstruction_shape, tuple), "Reconstruction shape must be a tuple"
+    assert all(isinstance(dim, int) for dim in reconstruction_shape), "All dimensions in reconstruction shape must be integers"
+    assert isinstance(measurement_paths, list) and len(measurement_paths) > 0, "Measurement paths must be a non-empty list"
+    assert all(isinstance(path, str) for path in measurement_paths), "All measurement paths must be strings"
+    
+    # Validate description if provided
+    if description is not None:
+        assert isinstance(description, str), "Description must be a string"
+    
+    # Create a cursor object and start a transaction
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+    
+    # Create the parameters dictionary for dataset insertion
+    parameters = {
+        'file_path': file_path
+    }
+    
+    # Add description if provided
+    if description is not None:
+        parameters['description'] = description
+    
+    # Load the dataset into the database
+    table_name = 'datasets'
+    try:
+        row_id = load_table(cursor, table_name, parameters)
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        conn.rollback()
+        cursor.close()
+        return
+    
+    print(f"Dataset from '{file_path}' loaded with ID: {row_id}")
+    
+    # Create the metadata parameters dictionary
+    metadata_parameters = [
+        {table_name[:-1] + '_id': row_id, 'key': 'rows', 'value': str(rows), 'type': 'cardinal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'patch_size', 'value': patch_size, 'type': 'pixels'},
+        {table_name[:-1] + '_id': row_id, 'key': 'reconstruction_shape', 'value': str(reconstruction_shape), 'type': 'pixels tuple'}
+    ]
+
+    for target in targets:
+        metadata_parameters.append({
+            table_name[:-1] + '_id': row_id, 
+            'key': 'target', 
+            'value': target, 
+            'type': 'nominal'
+        })
+    
+    metadata_table_name = 'dataset_metadata'
+    
+    # Insert each metadata entry
+    for attributes in metadata_parameters:
+        try:
+            load_table(cursor, metadata_table_name, attributes)
+        except Exception as e:
+            print(f"Error loading dataset metadata: {e}")
+            conn.rollback()
+            cursor.close()
+            return
+    
+    # Insert sample names into the xct_measurement_samples table
+    measurements_data = dbt.get_data_metadata('measurements')
+
+    # Filter measurements to only include those whose file paths match the provided paths
+    measurements_data = measurements_data[measurements_data['file_path_measurement'].isin(measurement_paths)]
+
+    # Extract the measurement IDs from the filtered data
+    measurement_ids = measurements_data['id_measurement'].values.tolist()
+
+    # Define the name of the relational table that connects datasets and measurements
+    relational_table_name = 'dataset_measurements'
+
+    # Loop through each measurement ID to create the relationship with the dataset
+    for measurement_id in measurement_ids:
+        # Prepare parameters for the relationship entry
+        relational_parameters = {'dataset_id': row_id, 'measurement_id': measurement_id}
+
+        try:
+            # Insert the relationship into the relational table
+            load_table(cursor, relational_table_name, relational_parameters)
+        except Exception as e:
+            print(f"Error loading dataset-measurement relationship: {e}")
             conn.rollback()
             cursor.close()
             return
