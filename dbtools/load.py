@@ -767,5 +767,78 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
     # Close the cursor
     cursor.close()
 
+def load_registration(conn,transformation_matrix, reference_file_path, registered_file_path):
+    """
+    Load a registration into the database, including its metadata.
+    
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    transformation_matrix : list
+        Transformation matrix used for registration.
+    reference_file_path : str
+        The file path of the reference measurement.
+    registered_file_path : str
+        The file path of the registered measurement.
+        
+    Returns:
+    --------
+    None
+        This function doesn't return a value, but prints success or error messages.
+        
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    """
+    # Validate input parameters
+    assert isinstance(transformation_matrix, list) and len(transformation_matrix) == 3, "Transformation matrix must be a list of 3 lists"
+    assert all(isinstance(row, list) and len(row) == 3 for row in transformation_matrix), "Each row of the transformation matrix must be a list of 3 numeric values"
+    assert all(isinstance(value, (float, int)) for row in transformation_matrix for value in row), "All values in the transformation matrix must be numeric"
+    assert isinstance(reference_file_path, str) and reference_file_path, "Reference file path must be a non-empty string"
+    assert isinstance(registered_file_path, str) and registered_file_path, "Registered file path must be a non-empty string"
+    
+    # Create a cursor object and start a transaction
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+
+    # Insert sample names into the xct_measurement_samples table
+    measurements_data = dbt.get_data_metadata('measurements')
+
+    measurement_paths = [reference_file_path, registered_file_path]
+
+    # Filter measurements to only include those whose file paths match the provided paths
+    measurements_data = measurements_data[measurements_data['file_path_measurement'].isin(measurement_paths)]
+
+    # Extract the measurement IDs from the filtered data
+    reference_measurement_id = measurements_data[measurements_data['file_path_measurement'] == reference_file_path]['id_measurement'].values[0]
+    registered_measurement_id = measurements_data[measurements_data['file_path_measurement'] == registered_file_path]['id_measurement'].values[0]
+    
+    # Create the parameters dictionary for registration insertion
+    parameters = {
+        'transformation_matrix': str(transformation_matrix),
+        'reference_measurement_id': reference_measurement_id,
+        'registered_measurement_id': registered_measurement_id
+    }
+
+    # Load the registration into the database
+    table_name = 'registrations'
+    try:
+        row_id = load_table(cursor, table_name, parameters)
+    except Exception as e:
+        print(f"Error loading registration: {e}")
+        conn.rollback()
+        cursor.close()
+        return
+    
+    print(f"Registration loaded with ID: {row_id}")
+    
+    # Commit the transaction if everything is successful
+    conn.commit()
+    
+    # Close the cursor
+    cursor.close()
+
 
 
