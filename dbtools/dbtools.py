@@ -350,3 +350,48 @@ def relation_metadata(table1_name: str, table2_name: str, intermediate_table_nam
     
     return merged_data
 
+def get_id(table_name,keys,values):
+
+    """
+    Retrieves the ID from a specified table based on given keys and values.
+
+    Parameters:
+    table_name (str): The name of the table to query.
+    keys (List[str]): The list of column names to filter by.
+    values (List[Any]): The corresponding values for the keys.
+
+    Returns:
+    int: The ID from the specified table that matches the given keys and values.
+    """
+
+    #assert that the table_name is a string
+    if not isinstance(table_name, str):
+        raise TypeError("table_name must be a string")
+    #assert that keys and values are lists
+    if not isinstance(keys, list) or not isinstance(values, list):
+        raise TypeError("keys and values must be lists")
+    #assert that keys and values have the same length
+    if len(keys) != len(values):
+        raise ValueError("keys and values must have the same length")
+
+    #get the table as a dataframe
+    data = get_data_metadata(table_name)
+
+    #Filter the dataframe based on the keys and values
+
+    filtered_data = data
+
+    for key, value in zip(keys, values):
+        filtered_data = filtered_data[filtered_data[key] == value]
+    
+    #If no rows match, raise an error
+    if filtered_data.empty:
+        raise ValueError(f"No matching record found in {table_name} for keys {keys} with values {values}")  
+    
+    #If multiple rows match, raise an error
+    if len(filtered_data) > 1:
+        raise ValueError(f"Multiple records found in {table_name} for keys {keys} with values {values}")
+    
+    #Return the ID of the first row
+    return filtered_data['id_' + table_name[:-1]].values[0]
+    

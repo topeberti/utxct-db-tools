@@ -338,7 +338,7 @@ def load_sample(conn, name, panel_id, height, width, thickness, keyhole, paralle
 
 
 def load_ut_measurement(conn, file_path, measurementtype_id, height, width, depth, dtype, 
-                        file_type, signal_type, axes_order,sample_names, parent_measurement_id=None, transformations=None):
+                        file_type, signal_type, axes_order,sample_names, parent_measurement_path=None, transformations=None):
     """
     Load an ultrasonic measurement into the database, including its metadata.
     
@@ -366,12 +366,12 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
         Order of the axes of the volume, e.g., ['x', 'y', 'z'].
     sample_names : list
         List of sample names associated with this measurement.
-    parent_measurement_id : int, optional
-        ID of the parent measurement from which this measurement is derived.
+    parent_measurement_path : str, optional
+        File path of the parent measurement from which this measurement is derived.
     transformations : str, optional
         Explanation of the transformations done to the parent measurement to create this one.
-        Required if parent_measurement_id is set.
-        
+        Required if parent_measurement_path is set.
+
     Returns:
     --------
     None
@@ -394,12 +394,12 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
     assert signal_type in ['RF', 'Amplitude'], "Signal type must be either 'RF' or 'Amplitude'"
     assert isinstance(axes_order, list) and len(axes_order) > 0, "Axes order must be a non-empty list"
     assert all(isinstance(axis, str) for axis in axes_order), "All axes must be strings"
-    
-    # Check parent_measurement_id and transformations
-    if parent_measurement_id is not None:
-        assert isinstance(parent_measurement_id, int) and parent_measurement_id > 0, "Parent measurement ID must be a positive integer"
-        assert isinstance(transformations, str) and transformations, "Transformations must be a non-empty string when parent_measurement_id is provided"
-    
+
+    # Check parent_measurement_path and transformations
+    if parent_measurement_path is not None:
+        assert isinstance(parent_measurement_path, str) and parent_measurement_path, "Parent measurement path must be a non-empty string"
+        assert isinstance(transformations, str) and transformations, "Transformations must be a non-empty string when parent_measurement_path is provided"
+
     # Create a cursor object and start a transaction
     cursor = conn.cursor()
     conn.autocommit = False  # Start transaction
@@ -409,13 +409,14 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
         'file_path': file_path,
         'measurementtype_id': measurementtype_id
     }
-    
-    # Add parent_measurement_id if provided
-    if parent_measurement_id is not None:
-        parameters['parent_measurement_id'] = parent_measurement_id
+
+    #get the parent_measurement_id
+    if parent_measurement_path is not None:
+        parent_measurement_id = dbt.get_id('measurements', ['file_path_measurement'], [parent_measurement_path])
+        parameters['parent_measurement_id'] = int(parent_measurement_id)
     
     # Load the measurement into the database
-    table_name = 'ut_measurements'
+    table_name = 'measurements'
     try:
         row_id = load_table(cursor, table_name, parameters)
     except Exception as e:
@@ -446,7 +447,7 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
             'type': 'text'
         })
     
-    metadata_table_name = 'ut_measurement_metadata'
+    metadata_table_name = 'measurement_metadata'
     
     # Insert each metadata entry
     for attributes in metadata_parameters:
@@ -488,7 +489,7 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
 
 
 def load_xct_measurement(conn, file_path, measurementtype_id, height, width, depth, dtype, 
-                         file_type, sample_names, aligned, equalized, parent_measurement_id=None, transformations=None):
+                         file_type, sample_names, aligned, equalized, parent_measurement_path=None, transformations=None):
     """
     Load an X-ray CT measurement into the database, including its metadata.
     
@@ -516,11 +517,11 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
         Whether the volume is frontwall aligned.
     equalized : bool
         Whether the volume is equalized.
-    parent_measurement_id : int, optional
-        ID of the parent measurement from which this measurement is derived.
+    parent_measurement_path : str, optional
+        File path of the parent measurement from which this measurement is derived.
     transformations : str, optional
         Explanation of the transformations done to the parent measurement to create this one.
-        Required if parent_measurement_id is set.
+        Required if parent_measurement_path is set.
         
     Returns:
     --------
@@ -545,10 +546,10 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
     assert isinstance(aligned, bool), "aligned must be a boolean"
     assert isinstance(equalized, bool), "equalized must be a boolean"
     
-    # Check parent_measurement_id and transformations
-    if parent_measurement_id is not None:
-        assert isinstance(parent_measurement_id, int) and parent_measurement_id > 0, "Parent measurement ID must be a positive integer"
-        assert isinstance(transformations, str) and transformations, "Transformations must be a non-empty string when parent_measurement_id is provided"
+    # Check parent_measurement_path and transformations
+    if parent_measurement_path is not None:
+        assert isinstance(parent_measurement_path, str) and parent_measurement_path, "Parent measurement path must be a non-empty string"
+        assert isinstance(transformations, str) and transformations, "Transformations must be a non-empty string when parent_measurement_path is provided"
     
     # Create a cursor object and start a transaction
     cursor = conn.cursor()
@@ -560,12 +561,13 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
         'measurementtype_id': measurementtype_id
     }
     
-    # Add parent_measurement_id if provided
-    if parent_measurement_id is not None:
-        parameters['parent_measurement_id'] = parent_measurement_id
+    # Get the parent_measurement_id if parent_measurement_path is provided
+    if parent_measurement_path is not None:
+        parent_measurement_id = dbt.get_id('measurements', ['file_path_measurement'], [parent_measurement_path])
+        parameters['parent_measurement_id'] = int(parent_measurement_id)
     
     # Load the measurement into the database
-    table_name = 'xct_measurements'
+    table_name = 'measurements'
     try:
         row_id = load_table(cursor, table_name, parameters)
     except Exception as e:
@@ -596,7 +598,7 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
             'type': 'text'
         })
     
-    metadata_table_name = 'xct_measurement_metadata'
+    metadata_table_name = 'measurement_metadata'
     
     # Insert each metadata entry
     for attributes in metadata_parameters:
