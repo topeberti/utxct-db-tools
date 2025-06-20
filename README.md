@@ -12,6 +12,45 @@ The system is designed to store and manage various types of data including:
 - Dataset information
 - Measurement registrations
 
+## Web Interface
+
+The repository includes a web-based interface for easier data management. The web app provides forms for adding materials, panels, samples, and measurements to the database through a user-friendly interface.
+
+### Running the Web Interface
+
+1. Install the required dependencies for the web server:
+
+```bash
+cd server
+pip install -r requirements.txt
+```
+
+2. Run the Flask application:
+
+```bash
+python app.py
+```
+
+3. Open your web browser and navigate to:
+
+```
+http://localhost:5000
+```
+
+If you're accessing the server from another machine on the network, use the server's IP address instead of localhost:
+
+```
+http://SERVER_IP:5000
+```
+
+### Web Interface Features
+
+- Web forms for adding materials, panels, samples, and UT/XCT measurements
+- View all items in the database through tabular interfaces
+- Automatic file property extraction for measurements
+- Input validation and error handling
+- Clean and responsive user interface
+
 ## Project Structure
 
 - `dbtools/`: Contains database utility functions

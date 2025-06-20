@@ -82,8 +82,7 @@ def load_material(conn, name, layer_thickness, layer_layout):
         
     Returns:
     --------
-    None
-        This function doesn't return a value, but prints success or error messages.
+    -1 if an error occurs, otherwise the ID of the inserted material.
         
     Raises:
     -------
@@ -112,7 +111,7 @@ def load_material(conn, name, layer_thickness, layer_layout):
         print(f"Error loading material: {e}")
         conn.rollback()
         cursor.close()
-        return
+        return -1
 
     print(f"Material '{name}' loaded with ID: {row_id}")
 
@@ -135,7 +134,7 @@ def load_material(conn, name, layer_thickness, layer_layout):
             print(f"Error loading metadata: {e}")
             conn.rollback()
             cursor.close()
-            return
+            return -1
     
     # Commit the transaction if everything is successful
     conn.commit()
@@ -143,8 +142,10 @@ def load_material(conn, name, layer_thickness, layer_layout):
     # Close the cursor
     cursor.close()
 
+    return row_id
 
-def load_panel(conn, name, material_id, dimensions, edges_cutted, description=None):
+
+def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, description=None):
     """
     Load a panel into the database, including its metadata.
     
@@ -156,8 +157,12 @@ def load_panel(conn, name, material_id, dimensions, edges_cutted, description=No
         Panel name.
     material_id : int
         ID of the material used in the panel.
-    dimensions : list
-        List of dimensions in (x,y,z) format in millimeters.
+    height : float
+        Height of the panel in millimeters.
+    width : float
+        Width of the panel in millimeters.
+    thickness : float
+        Thickness of the panel in millimeters.
     edges_cutted : bool
         Whether the edges are cutted.
     description : str, optional
@@ -165,9 +170,8 @@ def load_panel(conn, name, material_id, dimensions, edges_cutted, description=No
         
     Returns:
     --------
-    None
-        This function doesn't return a value, but prints success or error messages.
-        
+    -1 if an error occurs, otherwise the ID of the inserted panel.
+
     Raises:
     -------
     AssertionError
@@ -176,8 +180,9 @@ def load_panel(conn, name, material_id, dimensions, edges_cutted, description=No
     # Validate input parameters
     assert isinstance(name, str) and name, "Panel name must be a non-empty string"
     assert isinstance(material_id, int) and material_id > 0, "Material ID must be a positive integer"
-    assert isinstance(dimensions, list) and len(dimensions) == 3, "Dimensions must be a list of 3 values (x,y,z)"
-    assert all(isinstance(d, (float, int)) for d in dimensions), "Dimensions must be numeric values"
+    assert isinstance(height, (float, int)) and height > 0, "Height must be a positive number"
+    assert isinstance(width, (float, int)) and width > 0, "Width must be a positive number"
+    assert isinstance(thickness, (float, int)) and thickness > 0, "Thickness must be a positive number"
     assert isinstance(edges_cutted, bool), "edges_cutted must be a boolean"
     
     # Validate description if provided
@@ -206,13 +211,14 @@ def load_panel(conn, name, material_id, dimensions, edges_cutted, description=No
         print(f"Error loading panel: {e}")
         conn.rollback()
         cursor.close()
-        return
+        return -1
     
     print(f"Panel '{name}' loaded with ID: {row_id}")
-    
-    # Create the metadata parameters dictionary
+      # Create the metadata parameters dictionary
     metadata_parameters = [
-        {table_name[:-1] + '_id': row_id, 'key': 'dim', 'value': str(dimensions), 'type': 'mm'},
+        {table_name[:-1] + '_id': row_id, 'key': 'height', 'value': str(height), 'type': 'mm'},
+        {table_name[:-1] + '_id': row_id, 'key': 'width', 'value': str(width), 'type': 'mm'},
+        {table_name[:-1] + '_id': row_id, 'key': 'thickness', 'value': str(thickness), 'type': 'mm'},
         {table_name[:-1] + '_id': row_id, 'key': 'edges_cutted', 'value': str(edges_cutted), 'type': 'bool'}
     ]
     
@@ -226,13 +232,15 @@ def load_panel(conn, name, material_id, dimensions, edges_cutted, description=No
             print(f"Error loading panel metadata: {e}")
             conn.rollback()
             cursor.close()
-            return
+            return -1
     
     # Commit the transaction if everything is successful
     conn.commit()
     
     # Close the cursor
     cursor.close()
+
+    return row_id
 
 
 def load_sample(conn, name, panel_id, height, width, thickness, keyhole, parallel_faces, description=None):
@@ -262,9 +270,8 @@ def load_sample(conn, name, panel_id, height, width, thickness, keyhole, paralle
         
     Returns:
     --------
-    None
-        This function doesn't return a value, but prints success or error messages.
-        
+    -1 if an error occurs, otherwise the ID of the inserted sample.
+
     Raises:
     -------
     AssertionError
@@ -305,8 +312,8 @@ def load_sample(conn, name, panel_id, height, width, thickness, keyhole, paralle
         print(f"Error loading sample: {e}")
         conn.rollback()
         cursor.close()
-        return
-    
+        return -1
+
     print(f"Sample '{name}' loaded with ID: {row_id}")
     
     # Create the metadata parameters dictionary
@@ -328,13 +335,15 @@ def load_sample(conn, name, panel_id, height, width, thickness, keyhole, paralle
             print(f"Error loading sample metadata: {e}")
             conn.rollback()
             cursor.close()
-            return
-    
+            return -1
+
     # Commit the transaction if everything is successful
     conn.commit()
     
     # Close the cursor
     cursor.close()
+
+    return row_id
 
 
 def load_ut_measurement(conn, file_path, measurementtype_id, height, width, depth, dtype, 
@@ -374,9 +383,8 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
 
     Returns:
     --------
-    None
-        This function doesn't return a value, but prints success or error messages.
-        
+    -1 if an error occurs, otherwise the ID of the inserted measurement.
+
     Raises:
     -------
     AssertionError
@@ -394,6 +402,7 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
     assert signal_type in ['RF', 'Amplitude'], "Signal type must be either 'RF' or 'Amplitude'"
     assert isinstance(axes_order, list) and len(axes_order) > 0, "Axes order must be a non-empty list"
     assert all(isinstance(axis, str) for axis in axes_order), "All axes must be strings"
+    assert len(set(axes_order)) == len(axes_order), "Axes order must contain unique values"
 
     # Check parent_measurement_path and transformations
     if parent_measurement_path is not None:
@@ -423,8 +432,8 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
         print(f"Error loading UT measurement: {e}")
         conn.rollback()
         cursor.close()
-        return
-    
+        return -1
+
     print(f"UT measurement from '{file_path}' loaded with ID: {row_id}")
     
     # Create the metadata parameters dictionary
@@ -457,8 +466,8 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
             print(f"Error loading UT measurement metadata: {e}")
             conn.rollback()
             cursor.close()
-            return
-    
+            return -1
+
     # Insert sample names into the ut_measurement_samples table
     samples_data = dbt.get_data_metadata('samples')
 
@@ -479,7 +488,7 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
             print(f"Error loading sample-measurement relationship: {e}")
             conn.rollback()
             cursor.close()
-            return
+            return -1
     
     # Commit the transaction if everything is successful
     conn.commit()
@@ -487,9 +496,11 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
     # Close the cursor
     cursor.close()
 
+    return row_id
+
 
 def load_xct_measurement(conn, file_path, measurementtype_id, height, width, depth, dtype, 
-                         file_type, sample_names, aligned, equalized, parent_measurement_path=None, transformations=None):
+                         file_type, sample_names, aligned, equalized, axes_order, parent_measurement_path=None, transformations=None):
     """
     Load an X-ray CT measurement into the database, including its metadata.
     
@@ -517,6 +528,8 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
         Whether the volume is frontwall aligned.
     equalized : bool
         Whether the volume is equalized.
+    axes_order : list
+        List of axes order for the measurement.
     parent_measurement_path : str, optional
         File path of the parent measurement from which this measurement is derived.
     transformations : str, optional
@@ -525,9 +538,8 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
         
     Returns:
     --------
-    None
-        This function doesn't return a value, but prints success or error messages.
-        
+    -1 if an error occurs, otherwise the ID of the inserted measurement.
+
     Raises:
     -------
     AssertionError
@@ -545,6 +557,9 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
     assert all(isinstance(name, str) for name in sample_names), "All sample names must be strings"
     assert isinstance(aligned, bool), "aligned must be a boolean"
     assert isinstance(equalized, bool), "equalized must be a boolean"
+    assert isinstance(axes_order, list) and len(axes_order) > 0, "Axes order must be a non-empty list"
+    assert all(isinstance(axis, str) for axis in axes_order), "All axes must be strings"
+    assert len(set(axes_order)) == len(axes_order), "Axes order must contain unique values"
     
     # Check parent_measurement_path and transformations
     if parent_measurement_path is not None:
@@ -574,7 +589,7 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
         print(f"Error loading XCT measurement: {e}")
         conn.rollback()
         cursor.close()
-        return
+        return -1
     
     print(f"XCT measurement from '{file_path}' loaded with ID: {row_id}")
     
@@ -586,7 +601,8 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
         {table_name[:-1] + '_id': row_id, 'key': 'dtype', 'value': dtype, 'type': 'string'},
         {table_name[:-1] + '_id': row_id, 'key': 'file_type', 'value': file_type, 'type': 'string'},
         {table_name[:-1] + '_id': row_id, 'key': 'aligned', 'value': str(aligned), 'type': 'boolean'},
-        {table_name[:-1] + '_id': row_id, 'key': 'equalized', 'value': str(equalized), 'type': 'boolean'}
+        {table_name[:-1] + '_id': row_id, 'key': 'equalized', 'value': str(equalized), 'type': 'boolean'},
+        {table_name[:-1] + '_id': row_id, 'key': 'axes_order', 'value': str(axes_order), 'type': 'list'}
     ]
     
     # Add transformations metadata if provided
@@ -608,7 +624,7 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
             print(f"Error loading XCT measurement metadata: {e}")
             conn.rollback()
             cursor.close()
-            return
+            return -1
     
     # Insert sample names into the xct_measurement_samples table
     samples_data = dbt.get_data_metadata('samples')
@@ -629,7 +645,7 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
             print(f"Error loading sample-measurement relationship: {e}")
             conn.rollback()
             cursor.close()
-            return
+            return -1
     
     # Commit the transaction if everything is successful
     conn.commit()
@@ -637,8 +653,10 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
     # Close the cursor
     cursor.close()
 
+    return row_id
 
-def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shape, measurement_paths, description=None):
+
+def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shape, measurement_file_paths, description=None):
     """
     Load a dataset into the database, including its metadata and measurement relationships.
     
@@ -656,30 +674,28 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
         List of targets for the dataset.
     reconstruction_shape : tuple
         Shape to see the dataset as an image.
-    measurement_paths : list
+    measurement_file_paths : list
         List of measurement file paths associated with this dataset.
     description : str, optional
         Dataset description.
         
     Returns:
     --------
-    None
-        This function doesn't return a value, but prints success or error messages.
-        
+    -1 if an error occurs, otherwise the ID of the inserted dataset.
+
     Raises:
     -------
     AssertionError
         If any of the input parameters don't meet the expected types/values.
     """
-    # Validate input parameters
-    assert isinstance(file_path, str) and file_path, "File path must be a non-empty string"
+    # Validate input parameters    assert isinstance(file_path, str) and file_path, "File path must be a non-empty string"
     assert isinstance(rows, int) and rows > 0, "Rows must be a positive integer"
     assert isinstance(patch_size, str), "Patch size must be a string"
     assert isinstance(targets, list) and all(isinstance(target, str) for target in targets), "Targets must be a list of strings"
     assert isinstance(reconstruction_shape, tuple), "Reconstruction shape must be a tuple"
     assert all(isinstance(dim, int) for dim in reconstruction_shape), "All dimensions in reconstruction shape must be integers"
-    assert isinstance(measurement_paths, list) and len(measurement_paths) > 0, "Measurement paths must be a non-empty list"
-    assert all(isinstance(path, str) for path in measurement_paths), "All measurement paths must be strings"
+    assert isinstance(measurement_file_paths, list) and len(measurement_file_paths) > 0, "Measurement paths must be a non-empty list"
+    assert all(isinstance(path, str) for path in measurement_file_paths), "All measurement paths must be strings"
     
     # Validate description if provided
     if description is not None:
@@ -706,7 +722,7 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
         print(f"Error loading dataset: {e}")
         conn.rollback()
         cursor.close()
-        return
+        return -1
     
     print(f"Dataset from '{file_path}' loaded with ID: {row_id}")
     
@@ -735,13 +751,12 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
             print(f"Error loading dataset metadata: {e}")
             conn.rollback()
             cursor.close()
-            return
-    
-    # Insert sample names into the xct_measurement_samples table
+            return -1
+        # Insert measurement file paths into the measurement-dataset relationship table
     measurements_data = dbt.get_data_metadata('measurements')
 
     # Filter measurements to only include those whose file paths match the provided paths
-    measurements_data = measurements_data[measurements_data['file_path_measurement'].isin(measurement_paths)]
+    measurements_data = measurements_data[measurements_data['file_path_measurement'].isin(measurement_file_paths)]
 
     # Extract the measurement IDs from the filtered data
     measurement_ids = measurements_data['id_measurement'].values.tolist()
@@ -761,13 +776,15 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
             print(f"Error loading dataset-measurement relationship: {e}")
             conn.rollback()
             cursor.close()
-            return
+            return -1
     
     # Commit the transaction if everything is successful
     conn.commit()
     
     # Close the cursor
     cursor.close()
+
+    return row_id
 
 def load_registration(conn,transformation_matrix, reference_file_path, registered_file_path):
     """
@@ -786,9 +803,8 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
         
     Returns:
     --------
-    None
-        This function doesn't return a value, but prints success or error messages.
-        
+    -1 if an error occurs, otherwise the ID of the inserted registration.
+
     Raises:
     -------
     AssertionError
@@ -832,7 +848,7 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
         print(f"Error loading registration: {e}")
         conn.rollback()
         cursor.close()
-        return
+        return -1
     
     print(f"Registration loaded with ID: {row_id}")
     
@@ -841,6 +857,8 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
     
     # Close the cursor
     cursor.close()
+
+    return row_id
 
 
 
