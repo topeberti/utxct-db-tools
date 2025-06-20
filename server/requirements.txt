@@ -1,0 +1,5 @@
+flask
+tifffile
+numpy
+pathlib
+git+https://github.com/topeberti/UTvsXCT-preprocessing.git

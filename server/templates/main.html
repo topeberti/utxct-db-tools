@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materials Database - Main Menu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1, h2 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .menu-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 40px;
+        }
+        .menu-item {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+            margin-bottom: 20px;
+            padding: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .menu-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .menu-item h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .menu-item p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .menu-button {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+        .menu-button:hover {
+            background-color: #2980b9;
+        }
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .flash-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .app-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .app-header h1 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+        }
+        .app-header p {
+            color: #666;
+            font-size: 1.2em;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1>Materials Database</h1>
+        <p>Data Loading Interface</p>
+    </div>
+    
+    <!-- Flash Messages -->
+    {% if get_flashed_messages() %}
+    <div class="flash-messages">
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="menu-container">
+        <div class="menu-item">
+            <h3>Materials</h3>
+            <p>Load material information into the database, including layer thickness and layer layout properties.</p>
+            <a href="{{ url_for('materials_page') }}" class="menu-button">Load Materials</a>
+        </div>
+        
+        <!-- Placeholder for future menu items -->        <div class="menu-item">
+            <h3>Panels</h3>
+            <p>Load panel information into the database, including dimensions, material and other properties.</p>
+            <a href="{{ url_for('panels_page') }}" class="menu-button">Load Panels</a>
+        </div>
+          <div class="menu-item">
+            <h3>Samples</h3>
+            <p>Load sample information into the database, including dimensions, panel reference and properties.</p>
+            <a href="{{ url_for('samples_page') }}" class="menu-button">Load Samples</a>
+        </div>
+          <div class="menu-item">
+            <h3>UT Measurements</h3>
+            <p>Load ultrasonic testing measurement data into the database, linking measurements to samples.</p>
+            <a href="{{ url_for('ut_measurements_page') }}" class="menu-button">Load UT Measurements</a>
+        </div>
+          <div class="menu-item">
+            <h3>XCT Measurements</h3>
+            <p>Load X-ray computed tomography measurement data into the database, linking measurements to samples.</p>
+            <a href="{{ url_for('xct_measurements_page') }}" class="menu-button">Load XCT Measurements</a>
+        </div>
+    </div>
+</body>
+</html>

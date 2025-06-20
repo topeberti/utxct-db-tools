@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XCT Measurements Database</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], 
+        input[type="number"],
+        input[type="file"],
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .file-path {
+            font-family: monospace;
+            margin-top: 5px;
+            padding: 5px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        .checkbox-group {
+            margin-top: 10px;
+        }
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            min-height: 100px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .flash-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .nav-links {
+            margin-top: 20px;
+        }
+        .nav-links a {
+            color: #3498db;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        .samples-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 4px;
+        }
+        .measurement-types-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 4px;
+        }
+        .section {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .section h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .checkbox-input {
+            margin-right: 5px;
+        }        .checkbox-label {
+            display: inline-block;
+            margin-right: 15px;
+        }
+        .axes-order-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .axes-order-group select {
+            flex: 1;
+        }
+        .help-text {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .loading {
+            color: #f39c12;
+        }
+        .success {
+            color: #27ae60;
+        }
+        .error {
+            color: #c0392b;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadFileInfoBtn = document.getElementById('load_file_info');
+            const filePathInput = document.getElementById('file_path');
+            const fileLoadingStatus = document.getElementById('file_loading_status');
+            
+            // Form fields to be filled with file info
+            const heightInput = document.getElementById('height');
+            const widthInput = document.getElementById('width');
+            const depthInput = document.getElementById('depth');
+            const dtypeInput = document.getElementById('dtype');
+            const fileTypeInput = document.getElementById('file_type');
+              // Helper function to validate file path
+            function isValidFilePath(path) {
+                // Basic check for network path format
+                return path.startsWith('\\\\');
+            }
+            
+            // Function to load file information
+            function loadFileInfo() {
+                const filePath = filePathInput.value.trim();
+                
+                if (!filePath) {
+                    fileLoadingStatus.textContent = 'Please enter a file path first';
+                    fileLoadingStatus.className = 'error';
+                    return;
+                }
+                
+                if (!isValidFilePath(filePath)) {
+                    fileLoadingStatus.textContent = 'Warning: Path may not be valid. Ensure it\'s a network path.';
+                    fileLoadingStatus.className = 'error';
+                    // Continue anyway as the server will validate further
+                }
+                
+                // Show loading status
+                fileLoadingStatus.textContent = 'Loading file information...';
+                fileLoadingStatus.className = 'loading';
+                
+                // Make AJAX request to get file info
+                fetch('/get_file_info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ file_path: filePath }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        fileLoadingStatus.textContent = 'Error: ' + data.error;
+                        fileLoadingStatus.className = 'error';
+                    } else {
+                        // Fill form fields with file information
+                        heightInput.value = data.height;
+                        widthInput.value = data.width;
+                        depthInput.value = data.depth;
+                        dtypeInput.value = data.dtype;
+                        fileTypeInput.value = data.file_type;
+                        
+                        fileLoadingStatus.textContent = 'File information loaded successfully!';
+                        fileLoadingStatus.className = 'success';
+                    }
+                })
+                .catch(error => {
+                    fileLoadingStatus.textContent = 'Error loading file information: ' + error.message;
+                    fileLoadingStatus.className = 'error';
+                    console.error('Error:', error);
+                });
+            }
+            
+            // Add event listener to the button
+            loadFileInfoBtn.addEventListener('click', loadFileInfo);
+            
+            // Also attempt to load file info when file path input loses focus
+            filePathInput.addEventListener('blur', function() {
+                if (filePathInput.value.trim() && !heightInput.value) {
+                    loadFileInfo();
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>XCT Measurements Database</h1>
+    
+    <!-- Flash Messages -->
+    {% if get_flashed_messages() %}
+    <div class="flash-messages">
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <h2>Add New XCT Measurement</h2>
+    <form action="{{ url_for('xct_measurements_submit') }}" method="post">
+        <div class="section">
+            <h3>Measurement File Information</h3>            <div class="form-group">
+                <label for="file_path">File Path:</label>
+                <input type="text" id="file_path" name="file_path" required placeholder="\\server\path\to\measurement.tif or \\server\path\to\tiff_folder">
+                <button type="button" id="load_file_info" class="menu-button" style="margin-top: 10px; width: auto;">Load File Information</button>
+                <div class="help-text">Enter the full network path to the TIFF file or folder containing TIFF files, then click "Load File Information"</div>
+                <div id="file_loading_status" style="margin-top: 5px; font-weight: bold;"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="parent_measurement_path">Parent Measurement Path (optional):</label>
+                <input type="text" id="parent_measurement_path" name="parent_measurement_path" placeholder="\\server\path\to\parent_measurement.tif or \\server\path\to\tiff_folder">
+                <div class="help-text">If this measurement is derived from another file, enter the path to that file or folder</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="transformations">Transformations (required if parent measurement provided):</label>
+                <textarea id="transformations" name="transformations" placeholder="Describe the transformations applied to the parent measurement"></textarea>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>Measurement Type</h3>
+            
+            <div class="form-group">
+                <label for="measurementtype_id">Measurement Type:</label>
+                <select id="measurementtype_id" name="measurementtype_id" required>
+                    <option value="">-- Select a Measurement Type --</option>
+                    {% for mtype in measurement_types %}
+                        <option value="{{ mtype.id }}">{{ mtype.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="measurement-types-list">
+                    <h4>Available Measurement Types:</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mtype in measurement_types %}
+                                <tr>
+                                    <td>{{ mtype.id }}</td>
+                                    <td>{{ mtype.name }}</td>
+                                    <td>{{ mtype.description }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>File Properties <small>(Automatically determined from file)</small></h3>
+            
+            <div class="form-group">
+                <label for="height">Height (pixels):</label>
+                <input type="number" id="height" name="height" min="1" required readonly>
+            </div>
+            
+            <div class="form-group">
+                <label for="width">Width (pixels):</label>
+                <input type="number" id="width" name="width" min="1" required readonly>
+            </div>
+            
+            <div class="form-group">
+                <label for="depth">Depth (pixels):</label>
+                <input type="number" id="depth" name="depth" min="1" required readonly>
+            </div>
+            
+            <div class="form-group">
+                <label for="dtype">Data Type:</label>
+                <input type="text" id="dtype" name="dtype" required readonly>
+            </div>
+            
+            <div class="form-group">
+                <label for="file_type">File Type:</label>
+                <input type="text" id="file_type" name="file_type" required readonly>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>XCT Specific Properties</h3>
+            
+            <div class="form-group">
+                <label>Volume Processing:</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="aligned" name="aligned" class="checkbox-input" value="true" checked>
+                    <label for="aligned" class="checkbox-label">Frontwall Aligned</label>
+                    
+                    <input type="checkbox" id="equalized" name="equalized" class="checkbox-input" value="true" checked>
+                    <label for="equalized" class="checkbox-label">Equalized</label>
+                </div>
+                <div class="help-text">Select the processing methods applied to this XCT volume</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="axes_order">Axes Order:</label>
+                <div class="axes-order-group">
+                    <select id="axes_order_1" name="axes_order_1" required>
+                        <option value="x">X</option>
+                        <option value="y">Y</option>
+                        <option value="z" selected>Z</option>
+                    </select>
+                    <select id="axes_order_2" name="axes_order_2" required>
+                        <option value="x">X</option>
+                        <option value="y" selected>Y</option>
+                        <option value="z">Z</option>
+                    </select>
+                    <select id="axes_order_3" name="axes_order_3" required>
+                        <option value="x" selected>X</option>
+                        <option value="y">Y</option>
+                        <option value="z">Z</option>
+                    </select>
+                </div>
+                <div class="help-text">Select the axes order (default: Z, Y, X)</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>Sample Association</h3>
+            
+            <div class="form-group">
+                <label for="sample_ids">Associated Samples:</label>
+                <select id="sample_ids" name="sample_ids" multiple required>
+                    {% for sample in samples %}
+                        <option value="{{ sample.id }}">{{ sample.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="help-text">Hold Ctrl/Cmd to select multiple samples</div>
+                <div class="samples-list">
+                    <h4>Available Samples:</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Panel</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sample in samples %}
+                                <tr>
+                                    <td>{{ sample.id }}</td>
+                                    <td>{{ sample.name }}</td>
+                                    <td>{{ sample.panel_name }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <button type="submit">Save XCT Measurement</button>
+    </form>
+    
+    <div class="nav-links">
+        <a href="{{ url_for('view_xct_measurements') }}">View All XCT Measurements</a>
+        <a href="{{ url_for('index') }}">Back to Main Menu</a>
+    </div>
+</body>
+</html>
