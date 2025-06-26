@@ -274,7 +274,7 @@ def load_material(conn, name, layer_thickness, additional_metadata=None):
     return row_id
 
 
-def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, layer_layout=None, description=None, additional_metadata=None):
+def load_panel(conn, name, material_id, fabrication_id, height, width, thickness, edges_cutted, layer_layout=None, description=None, additional_metadata=None):
     """
     Load a panel into the database, including its metadata.
     
@@ -292,6 +292,8 @@ def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, 
         Panel name/identifier.
     material_id : int
         ID of the material used in the panel (foreign key reference).
+    fabrication_id : int
+        ID of the fabrication method used to create the panel (foreign key reference).
     height : float
         Height of the panel in millimeters.
     width : float
@@ -323,6 +325,7 @@ def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, 
     # Validate input parameters
     assert isinstance(name, str) and name, "Panel name must be a non-empty string"
     assert isinstance(material_id, int) and material_id > 0, "Material ID must be a positive integer"
+    assert isinstance(fabrication_id, int) and fabrication_id > 0, "Fabrication ID must be a positive integer"
     assert isinstance(height, (float, int)) and height > 0, "Height must be a positive number"
     assert isinstance(width, (float, int)) and width > 0, "Width must be a positive number"
     assert isinstance(thickness, (float, int)) and thickness > 0, "Thickness must be a positive number"
@@ -350,7 +353,8 @@ def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, 
     # Create the parameters dictionary for panel insertion
     parameters = {
         'name': name,
-        'material_id': material_id
+        'material_id': material_id,
+        'fabrication_id': fabrication_id,
     }
     
     # Add description if provided
