@@ -315,6 +315,10 @@ def relation_metadata(table1_name: str, table2_name: str, intermediate_table_nam
     
     # Get data from the intermediate table
     intermediate_data = get_data(intermediate_table_name)
+
+    #check if the intermediate table is empty
+    if intermediate_data.empty:
+        raise ValueError(f"The intermediate table '{intermediate_table_name}' is empty. Cannot perform relation merge.")
     
     # Remove the ID column from intermediate data
     intermediate_data = intermediate_data.drop(columns=['id_'+intermediate_table_name[:-1]])

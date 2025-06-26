@@ -3,10 +3,18 @@ Database Loading Module
 
 This module provides functions to securely load data into the database.
 It includes functions to load rows into tables, as well as specialized
-functions to load materials and panels with their associated metadata.
+functions to load materials, panels, samples, measurements, and datasets
+with their associated metadata.
+
+The functions follow a consistent pattern:
+1. Validate input parameters
+2. Create a cursor and start a transaction
+3. Insert the main record
+4. Insert associated metadata
+5. Commit the transaction or rollback on error
 
 Dependencies:
-    - dbtools: Custom database utility module
+    - dbtools: Custom database utility module for fetching database data
 """
 
 import dbtools as dbt
@@ -14,6 +22,10 @@ import dbtools as dbt
 def load_table(cursor, table_name, data):
     """
     Load a single row of data into a database table.
+    
+    This function serves as the base insertion method for all other loading
+    functions in this module. It constructs a parameterized SQL INSERT statement
+    from the provided data dictionary and returns the ID of the newly inserted row.
     
     Parameters:
     -----------
@@ -56,33 +68,138 @@ def load_table(cursor, table_name, data):
     id_column = f"id"
     sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) RETURNING {id_column}"
 
-    # Execute the SQL statement with parameterized query
+    # Execute the SQL statement with parameterized query to prevent SQL injection
     cursor.execute(sql, values)
 
-    # Fetch the returned ID
+    # Fetch the returned ID of the newly inserted row
     inserted_id = cursor.fetchone()[0]
     
     return inserted_id
 
+def load_fabrication(conn, name, additional_metadata=None):
+    """
+    Load a fabrication method into the database, including its metadata.
+    
+    This function inserts a new fabrication method record into the 'fabrications' 
+    table and stores any additional metadata in the 'fabrication_metadata' table.
+    The function handles the database transaction, committing on success or 
+    rolling back on failure.
 
-def load_material(conn, name, layer_thickness, layer_layout):
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    name : str
+        Fabrication method name/identifier.
+    additional_metadata : list, optional
+        List of dictionaries containing additional metadata.
+        Each dictionary should have 'key', 'value', and 'type' keys.
+        Example: [{'key': 'temperature', 'value': 150.5, 'type': 'celsius'}, 
+                  {'key': 'pressure', 'value': '10MPa', 'type': 'string'}]
+        
+    Returns:
+    --------
+    int
+        The ID of the inserted fabrication method, or -1 if an error occurs.
+        
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    """
+    # Validate input parameters
+    assert isinstance(name, str) and name, "Fabrication method name must be a non-empty string"
+    
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
+
+    # Create a cursor object and start a transaction
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+
+    # Create the parameters dictionary for fabrication insertion
+    parameters = {
+        'name': name
+    }
+    
+    # Load the fabrication method into the database
+    table_name = 'fabrications'
+    try:
+        row_id = load_table(cursor, table_name, parameters)
+    except Exception as e:
+        print(f"Error loading fabrication method: {e}")
+        conn.rollback()
+        cursor.close()
+        return -1
+
+    print(f"Fabrication method '{name}' loaded with ID: {row_id}")
+
+    # Create the metadata parameters dictionary
+    metadata_parameters = [
+    ]
+    
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
+
+    metadata_table_name = 'fabrication_metadata'
+
+    # Insert each metadata entry
+    for attributes in metadata_parameters:
+        try:
+            load_table(cursor, metadata_table_name, attributes)
+        except Exception as e:
+            print(f"Error loading metadata: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+    
+    # Commit the transaction if everything is successful
+    conn.commit()
+
+    # Close the cursor
+    cursor.close()
+
+    return row_id
+
+
+def load_material(conn, name, layer_thickness, additional_metadata=None):
     """
     Load a material into the database, including its metadata.
+    
+    This function inserts a new material record into the 'materials' table and
+    stores its properties (layer thickness and any additional metadata) in the 
+    'material_metadata' table. The function handles the database transaction,
+    committing on success or rolling back on failure.
     
     Parameters:
     -----------
     conn : psycopg2.connection
         Database connection object.
     name : str
-        Material name.
+        Material name/identifier.
     layer_thickness : float
-        Thickness of the material layer.
-    layer_layout : list
-        List of integers representing the layer layout.
+        Thickness of the material layer in millimeters.
+    additional_metadata : list, optional
+        List of dictionaries containing additional metadata.
+        Each dictionary should have 'key', 'value', and 'type' keys.
+        Example: [{'key': 'density', 'value': 1.5, 'type': 'g/cm3'}, 
+                  {'key': 'color', 'value': 'blue', 'type': 'string'}]
         
     Returns:
     --------
-    -1 if an error occurs, otherwise the ID of the inserted material.
+    int
+        The ID of the inserted material, or -1 if an error occurs.
         
     Raises:
     -------
@@ -92,7 +209,13 @@ def load_material(conn, name, layer_thickness, layer_layout):
     # Validate input parameters
     assert isinstance(name, str) and name, "Material name must be a non-empty string"
     assert isinstance(layer_thickness, (float, int)) and layer_thickness > 0, "Layer thickness must be a positive number"
-    assert isinstance(layer_layout, list) and all(isinstance(i, int) for i in layer_layout), "Layer layout must be a list of integers"
+    
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
 
     # Create a cursor object and start a transaction
     cursor = conn.cursor()
@@ -115,14 +238,20 @@ def load_material(conn, name, layer_thickness, layer_layout):
 
     print(f"Material '{name}' loaded with ID: {row_id}")
 
-    # Query metadata table (this appears to be unused)
-    cursor.execute("select * from material_metadata")
-
-    # Create the metadata parameters dictionary
+    # Create the metadata parameters dictionary with the required layer_thickness
     metadata_parameters = [
-        {table_name[:-1] + '_id':row_id, 'key': 'layer_thickness', 'value': layer_thickness, 'type': 'float'},
-        {table_name[:-1] + '_id':row_id, 'key': 'layer_layout', 'value': str(layer_layout), 'type': 'list'}
+        {table_name[:-1] + '_id':row_id, 'key': 'layer_thickness', 'value': layer_thickness, 'type': 'float'}
     ]
+    
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
 
     metadata_table_name = 'material_metadata'
 
@@ -145,18 +274,24 @@ def load_material(conn, name, layer_thickness, layer_layout):
     return row_id
 
 
-def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, description=None):
+def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, layer_layout=None, description=None, additional_metadata=None):
     """
     Load a panel into the database, including its metadata.
+    
+    This function inserts a new panel record into the 'panels' table and stores
+    its physical properties (dimensions, edges status, layer layout, etc.) in the
+    'panel_metadata' table. The panel is linked to a material via material_id.
+    The function handles the database transaction, committing on success or 
+    rolling back on failure.
     
     Parameters:
     -----------
     conn : psycopg2.connection
         Database connection object.
     name : str
-        Panel name.
+        Panel name/identifier.
     material_id : int
-        ID of the material used in the panel.
+        ID of the material used in the panel (foreign key reference).
     height : float
         Height of the panel in millimeters.
     width : float
@@ -164,13 +299,21 @@ def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, 
     thickness : float
         Thickness of the panel in millimeters.
     edges_cutted : bool
-        Whether the edges are cutted.
+        Whether the edges have been cut/finished.
+    layer_layout : list, optional
+        List of integers representing the layer layout configuration.
     description : str, optional
-        Panel description.
+        Textual description of the panel.
+    additional_metadata : list, optional
+        List of dictionaries containing additional metadata.
+        Each dictionary should have 'key', 'value', and 'type' keys.
+        Example: [{'key': 'surface_finish', 'value': 'polished', 'type': 'string'}, 
+                  {'key': 'weight', 'value': 2.5, 'type': 'kg'}]
         
     Returns:
     --------
-    -1 if an error occurs, otherwise the ID of the inserted panel.
+    int
+        The ID of the inserted panel, or -1 if an error occurs.
 
     Raises:
     -------
@@ -185,9 +328,20 @@ def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, 
     assert isinstance(thickness, (float, int)) and thickness > 0, "Thickness must be a positive number"
     assert isinstance(edges_cutted, bool), "edges_cutted must be a boolean"
     
+    # Validate layer_layout if provided
+    if layer_layout is not None:
+        assert isinstance(layer_layout, list) and all(isinstance(i, int) for i in layer_layout), "Layer layout must be a list of integers"
+    
     # Validate description if provided
     if description is not None:
         assert isinstance(description, str), "Description must be a string"
+    
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
     
     # Create a cursor object and start a transaction
     cursor = conn.cursor()
@@ -214,6 +368,7 @@ def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, 
         return -1
     
     print(f"Panel '{name}' loaded with ID: {row_id}")
+    
       # Create the metadata parameters dictionary
     metadata_parameters = [
         {table_name[:-1] + '_id': row_id, 'key': 'height', 'value': str(height), 'type': 'mm'},
@@ -221,6 +376,25 @@ def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, 
         {table_name[:-1] + '_id': row_id, 'key': 'thickness', 'value': str(thickness), 'type': 'mm'},
         {table_name[:-1] + '_id': row_id, 'key': 'edges_cutted', 'value': str(edges_cutted), 'type': 'bool'}
     ]
+    
+    # Add layer_layout metadata if provided
+    if layer_layout is not None:
+        metadata_parameters.append({
+            table_name[:-1] + '_id': row_id, 
+            'key': 'layer_layout', 
+            'value': str(layer_layout), 
+            'type': 'list'
+        })
+    
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
     
     metadata_table_name = 'panel_metadata'
     
@@ -243,18 +417,24 @@ def load_panel(conn, name, material_id, height, width, thickness, edges_cutted, 
     return row_id
 
 
-def load_sample(conn, name, panel_id, height, width, thickness, keyhole, parallel_faces, description=None):
+def load_sample(conn, name, panel_id, height, width, thickness, keyhole, parallel_faces, description=None, additional_metadata=None):
     """
     Load a sample into the database, including its metadata.
+    
+    This function inserts a new sample record into the 'samples' table and stores
+    its physical properties (dimensions, keyhole presence, face parallelism, etc.) 
+    in the 'sample_metadata' table. The sample is linked to a panel via panel_id.
+    The function handles the database transaction, committing on success or 
+    rolling back on failure.
     
     Parameters:
     -----------
     conn : psycopg2.connection
         Database connection object.
     name : str
-        Sample name.
+        Sample name/identifier.
     panel_id : int
-        ID of the panel from which the sample is taken.
+        ID of the panel from which the sample is derived (foreign key reference).
     height : float
         Height of the sample in millimeters.
     width : float
@@ -262,15 +442,21 @@ def load_sample(conn, name, panel_id, height, width, thickness, keyhole, paralle
     thickness : float
         Thickness of the sample in millimeters.
     keyhole : bool
-        Whether the sample has keyholes.
+        Whether the sample has keyholes (True/False).
     parallel_faces : bool
-        Whether the sample has parallel faces.
+        Whether the sample has parallel faces (True/False).
     description : str, optional
-        Sample description.
+        Textual description of the sample.
+    additional_metadata : list, optional
+        List of dictionaries containing additional metadata.
+        Each dictionary should have 'key', 'value', and 'type' keys.
+        Example: [{'key': 'defect_count', 'value': 3, 'type': 'integer'}, 
+                  {'key': 'manufacturing_date', 'value': '2025-01-15', 'type': 'date'}]
         
     Returns:
     --------
-    -1 if an error occurs, otherwise the ID of the inserted sample.
+    int
+        The ID of the inserted sample, or -1 if an error occurs.
 
     Raises:
     -------
@@ -289,6 +475,13 @@ def load_sample(conn, name, panel_id, height, width, thickness, keyhole, paralle
     # Validate description if provided
     if description is not None:
         assert isinstance(description, str), "Description must be a string"
+    
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
     
     # Create a cursor object and start a transaction
     cursor = conn.cursor()
@@ -324,6 +517,16 @@ def load_sample(conn, name, panel_id, height, width, thickness, keyhole, paralle
         {table_name[:-1] + '_id': row_id, 'key': 'keyhole', 'value': str(keyhole), 'type': 'bool'},
         {table_name[:-1] + '_id': row_id, 'key': 'parallel_faces', 'value': str(parallel_faces), 'type': 'bool'}
     ]
+
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
     
     metadata_table_name = 'sample_metadata'
     
@@ -345,9 +548,102 @@ def load_sample(conn, name, panel_id, height, width, thickness, keyhole, paralle
 
     return row_id
 
+def load_measurementtype(conn, name, additional_metadata=None):
+    """
+    Load a measurement type into the database, including its metadata.
+
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    name : str
+        Material name.
+    layer_thickness : float
+        Thickness of the material layer.
+    layer_layout : list
+        List of integers representing the layer layout.
+    additional_metadata : list, optional
+        List of dictionaries containing additional metadata.
+        Each dictionary should have 'key', 'value', and 'type' keys.
+        Example: [{'key': 'density', 'value': 1.5, 'type': 'float'}, 
+                  {'key': 'color', 'value': 'blue', 'type': 'string'}]
+        
+    Returns:
+    --------
+    -1 if an error occurs, otherwise the ID of the inserted measurementtype.
+        
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    """
+    # Validate input parameters
+    assert isinstance(name, str) and name, "Material name must be a non-empty string"
+    
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
+
+    # Create a cursor object and start a transaction
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+
+    # Create the parameters dictionary for material insertion
+    parameters = {
+        'name': name
+    }
+    
+    # Load the material into the database
+    table_name = 'measurementtypes'
+    try:
+        row_id = load_table(cursor, table_name, parameters)
+    except Exception as e:
+        print(f"Error loading material: {e}")
+        conn.rollback()
+        cursor.close()
+        return -1
+
+    print(f"Material '{name}' loaded with ID: {row_id}")
+
+    # Create the metadata parameters dictionary
+    metadata_parameters = [
+    ]
+    
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
+
+    metadata_table_name = 'measurementtype_metadata'
+
+    # Insert each metadata entry
+    for attributes in metadata_parameters:
+        try:
+            load_table(cursor, metadata_table_name, attributes)
+        except Exception as e:
+            print(f"Error loading metadata: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+    
+    # Commit the transaction if everything is successful
+    conn.commit()
+
+    # Close the cursor
+    cursor.close()
+
+    return row_id
 
 def load_ut_measurement(conn, file_path, measurementtype_id, height, width, depth, dtype, 
-                        file_type, signal_type, axes_order,sample_names, parent_measurement_path=None, transformations=None):
+                        file_type, signal_type, axes_order,sample_names, parent_measurement_path=None, transformations=None, additional_metadata=None):
     """
     Load an ultrasonic measurement into the database, including its metadata.
     
@@ -408,6 +704,13 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
     if parent_measurement_path is not None:
         assert isinstance(parent_measurement_path, str) and parent_measurement_path, "Parent measurement path must be a non-empty string"
         assert isinstance(transformations, str) and transformations, "Transformations must be a non-empty string when parent_measurement_path is provided"
+    
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
 
     # Create a cursor object and start a transaction
     cursor = conn.cursor()
@@ -446,6 +749,16 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
         {table_name[:-1] + '_id': row_id, 'key': 'signal_type', 'value': signal_type, 'type': 'nominal'},
         {table_name[:-1] + '_id': row_id, 'key': 'axes_order', 'value': str(axes_order), 'type': 'list'}
     ]
+
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
     
     # Add transformations metadata if provided
     if transformations is not None:
@@ -500,7 +813,7 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
 
 
 def load_xct_measurement(conn, file_path, measurementtype_id, height, width, depth, dtype, 
-                         file_type, sample_names, aligned, equalized, axes_order, parent_measurement_path=None, transformations=None):
+                         file_type, sample_names, aligned, equalized, axes_order, parent_measurement_path=None, transformations=None, additional_metadata=None):
     """
     Load an X-ray CT measurement into the database, including its metadata.
     
@@ -566,6 +879,13 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
         assert isinstance(parent_measurement_path, str) and parent_measurement_path, "Parent measurement path must be a non-empty string"
         assert isinstance(transformations, str) and transformations, "Transformations must be a non-empty string when parent_measurement_path is provided"
     
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
+    
     # Create a cursor object and start a transaction
     cursor = conn.cursor()
     conn.autocommit = False  # Start transaction
@@ -604,6 +924,16 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
         {table_name[:-1] + '_id': row_id, 'key': 'equalized', 'value': str(equalized), 'type': 'boolean'},
         {table_name[:-1] + '_id': row_id, 'key': 'axes_order', 'value': str(axes_order), 'type': 'list'}
     ]
+
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
     
     # Add transformations metadata if provided
     if transformations is not None:
@@ -656,7 +986,7 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
     return row_id
 
 
-def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shape, measurement_file_paths, description=None):
+def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shape, measurement_file_paths, description=None, additional_metadata=None):
     """
     Load a dataset into the database, including its metadata and measurement relationships.
     
@@ -696,6 +1026,13 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
     assert all(isinstance(dim, int) for dim in reconstruction_shape), "All dimensions in reconstruction shape must be integers"
     assert isinstance(measurement_file_paths, list) and len(measurement_file_paths) > 0, "Measurement paths must be a non-empty list"
     assert all(isinstance(path, str) for path in measurement_file_paths), "All measurement paths must be strings"
+
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
     
     # Validate description if provided
     if description is not None:
@@ -732,6 +1069,16 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
         {table_name[:-1] + '_id': row_id, 'key': 'patch_size', 'value': patch_size, 'type': 'pixels'},
         {table_name[:-1] + '_id': row_id, 'key': 'reconstruction_shape', 'value': str(reconstruction_shape), 'type': 'pixels tuple'}
     ]
+
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
 
     for target in targets:
         metadata_parameters.append({
@@ -786,7 +1133,7 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
 
     return row_id
 
-def load_registration(conn,transformation_matrix, reference_file_path, registered_file_path):
+def load_registration(conn,transformation_matrix, reference_file_path, registered_file_path, additional_metadata=None):
     """
     Load a registration into the database, including its metadata.
     
@@ -816,6 +1163,13 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
     assert all(isinstance(value, (float, int)) for row in transformation_matrix for value in row), "All values in the transformation matrix must be numeric"
     assert isinstance(reference_file_path, str) and reference_file_path, "Reference file path must be a non-empty string"
     assert isinstance(registered_file_path, str) and registered_file_path, "Registered file path must be a non-empty string"
+
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
     
     # Create a cursor object and start a transaction
     cursor = conn.cursor()
@@ -841,7 +1195,7 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
     }
 
     # Load the registration into the database
-    table_name = 'registrations'
+    table_name = 'measurement_registrations'
     try:
         row_id = load_table(cursor, table_name, parameters)
     except Exception as e:
@@ -849,6 +1203,31 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
         conn.rollback()
         cursor.close()
         return -1
+    
+    # Create the metadata parameters dictionary
+    metadata_parameters = []
+
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
+    
+    metadata_table_name = 'measurement_registration_metadata'
+    
+    # Insert each metadata entry
+    for attributes in metadata_parameters:
+        try:
+            load_table(cursor, metadata_table_name, attributes)
+        except Exception as e:
+            print(f"Error loading dataset metadata: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
     
     print(f"Registration loaded with ID: {row_id}")
     
