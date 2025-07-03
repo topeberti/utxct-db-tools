@@ -1219,7 +1219,7 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
     
     # Create the parameters dictionary for registration insertion
     parameters = {
-        'transformation_matrix': str(transformation_matrix),
+        'registration_matrix': str(transformation_matrix),
         'reference_measurement_id': reference_measurement_id,
         'registered_measurement_id': registered_measurement_id
     }
