@@ -145,6 +145,8 @@ def load_fabrication(conn, name, additional_metadata=None):
     # Add additional metadata if provided
     if additional_metadata is not None:
         for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
             metadata_parameters.append({
                 table_name[:-1] + '_id': row_id,
                 'key': item['key'],
@@ -246,6 +248,8 @@ def load_material(conn, name, layer_thickness, additional_metadata=None):
     # Add additional metadata if provided
     if additional_metadata is not None:
         for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
             metadata_parameters.append({
                 table_name[:-1] + '_id': row_id,
                 'key': item['key'],
@@ -393,6 +397,8 @@ def load_panel(conn, name, material_id, fabrication_id, height, width, thickness
     # Add additional metadata if provided
     if additional_metadata is not None:
         for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
             metadata_parameters.append({
                 table_name[:-1] + '_id': row_id,
                 'key': item['key'],
@@ -525,6 +531,8 @@ def load_sample(conn, name, panel_id, height, width, thickness, keyhole, paralle
     # Add additional metadata if provided
     if additional_metadata is not None:
         for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
             metadata_parameters.append({
                 table_name[:-1] + '_id': row_id,
                 'key': item['key'],
@@ -619,6 +627,8 @@ def load_measurementtype(conn, name, additional_metadata=None):
     # Add additional metadata if provided
     if additional_metadata is not None:
         for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
             metadata_parameters.append({
                 table_name[:-1] + '_id': row_id,
                 'key': item['key'],
@@ -757,6 +767,8 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
     # Add additional metadata if provided
     if additional_metadata is not None:
         for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
             metadata_parameters.append({
                 table_name[:-1] + '_id': row_id,
                 'key': item['key'],
@@ -924,14 +936,16 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
         {table_name[:-1] + '_id': row_id, 'key': 'depth', 'value': str(depth), 'type': 'cardinal'},
         {table_name[:-1] + '_id': row_id, 'key': 'dtype', 'value': dtype, 'type': 'string'},
         {table_name[:-1] + '_id': row_id, 'key': 'file_type', 'value': file_type, 'type': 'string'},
-        {table_name[:-1] + '_id': row_id, 'key': 'aligned', 'value': str(aligned), 'type': 'boolean'},
-        {table_name[:-1] + '_id': row_id, 'key': 'equalized', 'value': str(equalized), 'type': 'boolean'},
+        {table_name[:-1] + '_id': row_id, 'key': 'aligned', 'value': str(aligned), 'type': 'bool'},
+        {table_name[:-1] + '_id': row_id, 'key': 'equalized', 'value': str(equalized), 'type': 'bool'},
         {table_name[:-1] + '_id': row_id, 'key': 'axes_order', 'value': str(axes_order), 'type': 'list'}
     ]
 
     # Add additional metadata if provided
     if additional_metadata is not None:
         for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
             metadata_parameters.append({
                 table_name[:-1] + '_id': row_id,
                 'key': item['key'],
@@ -1077,6 +1091,8 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
     # Add additional metadata if provided
     if additional_metadata is not None:
         for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
             metadata_parameters.append({
                 table_name[:-1] + '_id': row_id,
                 'key': item['key'],
@@ -1137,7 +1153,7 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
 
     return row_id
 
-def load_registration(conn,transformation_matrix, reference_file_path, registered_file_path, additional_metadata=None):
+def load_registration(conn,transformation_matrix, reference_file_path, registered_file_path, registration_type, additional_metadata=None):
     """
     Load a registration into the database, including its metadata.
     
@@ -1151,6 +1167,8 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
         The file path of the reference measurement.
     registered_file_path : str
         The file path of the registered measurement.
+    registration_type : str
+        Unique name for the registration type. Ie: 2024 registration algorithm v01
         
     Returns:
     --------
@@ -1167,6 +1185,7 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
     assert all(isinstance(value, (float, int)) for row in transformation_matrix for value in row), "All values in the transformation matrix must be numeric"
     assert isinstance(reference_file_path, str) and reference_file_path, "Reference file path must be a non-empty string"
     assert isinstance(registered_file_path, str) and registered_file_path, "Registered file path must be a non-empty string"
+    assert isinstance(registration_type, str) and registration_type, "Registration type must be a non-empty string"
 
     # Validate additional_metadata if provided
     if additional_metadata is not None:
@@ -1209,11 +1228,14 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
         return -1
     
     # Create the metadata parameters dictionary
-    metadata_parameters = []
+    metadata_parameters = [
+        {table_name[:-1] + '_id': row_id, 'key': 'type', 'value': registration_type, 'type': 'text'}]
 
     # Add additional metadata if provided
     if additional_metadata is not None:
         for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
             metadata_parameters.append({
                 table_name[:-1] + '_id': row_id,
                 'key': item['key'],

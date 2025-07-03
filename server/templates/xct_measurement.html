@@ -151,8 +151,89 @@
         .error {
             color: #c0392b;
         }
+        
+        /* Metadata Section Styles */
+        .metadata-section {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .metadata-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .metadata-item input, .metadata-item select {
+            flex: 1;
+        }
+        .remove-metadata {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .remove-metadata:hover {
+            background-color: #c0392b;
+        }
+        .add-metadata {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .add-metadata:hover {
+            background-color: #229954;
+        }
+        .metadata-examples {
+            background-color: #e8f4f8;
+            border: 1px solid #bee5eb;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .metadata-examples h5 {
+            margin: 0 0 5px 0;
+            color: #0c5460;
+        }
     </style>
     <script>
+        let metadataCounter = 0;
+        
+        function addMetadataField() {
+            metadataCounter++;
+            const metadataContainer = document.getElementById('metadata-container');
+            const metadataItem = document.createElement('div');
+            metadataItem.className = 'metadata-item';
+            metadataItem.innerHTML = `
+                <input type="text" name="metadata_key[]" placeholder="Key (e.g., voltage)" required>
+                <input type="text" name="metadata_value[]" placeholder="Value (e.g., 120)" required>
+                <select name="metadata_type[]" required>
+                    <option value="">Type</option>
+                    <option value="string">Text</option>
+                    <option value="int">Integer</option>
+                    <option value="float">Decimal</option>
+                    <option value="bool">True/False</option>
+                    <option value="date">Date</option>
+                </select>
+                <button type="button" class="remove-metadata" onclick="removeMetadataField(this)">Remove</button>
+            `;
+            metadataContainer.appendChild(metadataItem);
+        }
+        
+        function removeMetadataField(button) {
+            button.parentNode.remove();
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             const loadFileInfoBtn = document.getElementById('load_file_info');
             const filePathInput = document.getElementById('file_path');
@@ -373,6 +454,28 @@
                     </select>
                 </div>
                 <div class="help-text">Select the axes order (default: Z, Y, X)</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>Additional Metadata <small>(Optional)</small></h3>
+            <div class="metadata-section">
+                <div id="metadata-container">
+                    <!-- Dynamic metadata fields will be added here -->
+                </div>
+                <button type="button" class="add-metadata" onclick="addMetadataField()">Add Metadata Field</button>
+                
+                <div class="metadata-examples">
+                    <h5>Example XCT metadata:</h5>
+                    <ul>
+                        <li><strong>voltage:</strong> 120 (int) - X-ray tube voltage in kV</li>
+                        <li><strong>current:</strong> 50.5 (float) - X-ray tube current in µA</li>
+                        <li><strong>exposure_time:</strong> 1000 (int) - Exposure time in ms</li>
+                        <li><strong>voxel_size:</strong> 0.25 (float) - Voxel size in mm</li>
+                        <li><strong>operator:</strong> John Smith (string) - Person who performed the scan</li>
+                        <li><strong>scan_date:</strong> 2024-01-15 (date) - Date of scanning</li>
+                    </ul>
+                </div>
             </div>
         </div>
         

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Materials Database - Main Menu</title>
+    <title>UTvsXCT Database - Main Menu</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -99,7 +99,7 @@
 </head>
 <body>
     <div class="app-header">
-        <h1>Materials Database</h1>
+        <h1>UTvsXCT Database</h1>
         <p>Data Loading Interface</p>
     </div>
     
@@ -119,22 +119,37 @@
             <a href="{{ url_for('materials_page') }}" class="menu-button">Load Materials</a>
         </div>
         
-        <!-- Placeholder for future menu items -->        <div class="menu-item">
+        <div class="menu-item">
+            <h3>Fabrication Methods</h3>
+            <p>Load fabrication method information into the database, including process parameters and properties.</p>
+            <a href="{{ url_for('fabrication_page') }}" class="menu-button">Load Fabrication Methods</a>
+        </div>
+        
+        <div class="menu-item">
             <h3>Panels</h3>
             <p>Load panel information into the database, including dimensions, material and other properties.</p>
             <a href="{{ url_for('panels_page') }}" class="menu-button">Load Panels</a>
         </div>
-          <div class="menu-item">
+        
+        <div class="menu-item">
             <h3>Samples</h3>
             <p>Load sample information into the database, including dimensions, panel reference and properties.</p>
             <a href="{{ url_for('samples_page') }}" class="menu-button">Load Samples</a>
         </div>
-          <div class="menu-item">
+        
+        <div class="menu-item">
+            <h3>Measurement Types</h3>
+            <p>Define different types of measurements and testing methods used in material characterization.</p>
+            <a href="{{ url_for('measurementtype_page') }}" class="menu-button">Load Measurement Types</a>
+        </div>
+        
+        <div class="menu-item">
             <h3>UT Measurements</h3>
             <p>Load ultrasonic testing measurement data into the database, linking measurements to samples.</p>
             <a href="{{ url_for('ut_measurements_page') }}" class="menu-button">Load UT Measurements</a>
         </div>
-          <div class="menu-item">
+        
+        <div class="menu-item">
             <h3>XCT Measurements</h3>
             <p>Load X-ray computed tomography measurement data into the database, linking measurements to samples.</p>
             <a href="{{ url_for('xct_measurements_page') }}" class="menu-button">Load XCT Measurements</a>

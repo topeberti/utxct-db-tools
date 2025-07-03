@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Materials - Materials Database</title>
+    <title>Measurement Types - UTvsXCT Database</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -121,9 +121,41 @@
             color: #666;
             margin-top: 5px;
         }
+        .examples-section {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .examples-section h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .examples-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .example-item {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #3498db;
+        }
+        .example-title {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .example-desc {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
     </style>
 </head>
-<body>    <h1>Materials Database</h1>
+<body>
+    <h1>UTvsXCT Database</h1>
     
     <!-- Flash Messages -->
     {% if get_flashed_messages() %}
@@ -134,45 +166,72 @@
     </div>
     {% endif %}
     
-    <h2>Add New Material</h2>
-    <form action="{{ url_for('materials_submit') }}" method="post">
-        <!-- Required Fields -->
-        <div class="form-group">
-            <label for="name">Material Name:</label>
-            <input type="text" id="name" name="name" required>
-            <div class="help-text">Enter a unique name for the material (e.g., "Carbon Fiber T300", "E-Glass", "Aluminum 6061")</div>
+    <h2>Add New Measurement Type</h2>
+    
+    <!-- Examples Section -->
+    <div class="examples-section">
+        <h3>Common Measurement Types</h3>
+        <p>Measurement types define the kind of testing or measurement being performed. Here are some common examples:</p>
+        <div class="examples-list">
+            <div class="example-item">
+                <div class="example-title">Ultrasonic Testing (UT)</div>
+                <div class="example-desc">Non-destructive testing using ultrasonic waves to detect internal defects</div>
+            </div>
+            <div class="example-item">
+                <div class="example-title">X-ray Computed Tomography (XCT)</div>
+                <div class="example-desc">3D imaging technique for internal structure analysis</div>
+            </div>
+            <div class="example-item">
+                <div class="example-title">Tensile Testing</div>
+                <div class="example-desc">Mechanical testing to determine material strength and elongation</div>
+            </div>
+            <div class="example-item">
+                <div class="example-title">Compression Testing</div>
+                <div class="example-desc">Testing material behavior under compressive loads</div>
+            </div>
+            <div class="example-item">
+                <div class="example-title">Fatigue Testing</div>
+                <div class="example-desc">Testing material endurance under cyclic loading</div>
+            </div>
+            <div class="example-item">
+                <div class="example-title">Impact Testing</div>
+                <div class="example-desc">Testing material toughness and energy absorption</div>
+            </div>
         </div>
-        
+    </div>
+    
+    <form action="{{ url_for('measurementtype_submit') }}" method="post">
+        <!-- Required Measurement Type Name Field -->
         <div class="form-group">
-            <label for="layer_thickness">Layer Thickness (mm):</label>
-            <input type="number" id="layer_thickness" name="layer_thickness" step="0.001" min="0.001" required>
-            <div class="help-text">Thickness of a single layer in millimeters (e.g., 0.125, 0.25, 1.0)</div>
+            <label for="name">Measurement Type Name:</label>
+            <input type="text" id="name" name="name" required>
+            <div class="help-text">Enter a unique name for the measurement type (e.g., "Ultrasonic Testing", "XCT Scan", "Tensile Test")</div>
         </div>
         
         <!-- Optional Metadata Section -->
         <div class="metadata-section">
-            <h3>Additional Material Properties (Optional)</h3>
-            <p>Add any additional properties for this material such as layer layout, density, elastic modulus, etc.:</p>
+            <h3>Additional Properties (Optional)</h3>
+            <p>Add any additional properties or specifications for this measurement type:</p>
             
             <!-- Container for dynamic metadata fields -->
             <div id="metadata-container">
                 <!-- Initial metadata item (hidden by default) -->
                 <div class="metadata-item" style="display: none;">
                     <div class="metadata-header">
-                        <h4>Material Property</h4>
+                        <h4>Measurement Property</h4>
                         <button type="button" class="remove-metadata" onclick="removeMetadata(this)">Remove</button>
                     </div>
                     <div class="form-group">
                         <label>Property Name:</label>
-                        <input type="text" name="metadata_key[]" placeholder="e.g., layer_layout, density, elastic_modulus, color">
+                        <input type="text" name="metadata_key[]" placeholder="e.g., frequency, resolution, standard">
                     </div>
                     <div class="form-group">
                         <label>Value:</label>
-                        <input type="text" name="metadata_value[]" placeholder="e.g., [0,90,0,90], 1.6, 230000, blue">
+                        <input type="text" name="metadata_value[]" placeholder="e.g., 5MHz, 0.1mm, ASTM_D3039">
                     </div>
                     <div class="form-group">
                         <label>Unit/Type:</label>
-                        <input type="text" name="metadata_type[]" placeholder="e.g., degrees_array, g/cm3, MPa, string">
+                        <input type="text" name="metadata_type[]" placeholder="e.g., frequency, mm, standard">
                     </div>
                 </div>
             </div>
@@ -183,20 +242,21 @@
             <div style="margin-top: 15px; padding: 10px; background-color: #e8f4f8; border-radius: 4px;">
                 <h4 style="margin-top: 0;">Common Properties:</h4>
                 <ul style="margin-bottom: 0; font-size: 0.9em;">
-                    <li><strong>layer_layout</strong>: Fiber orientation angles (e.g., "[0,90,45,-45]" with type "degrees_array")</li>
-                    <li><strong>density</strong>: Material density (e.g., "1.6" with type "g/cm3")</li>
-                    <li><strong>elastic_modulus</strong>: Young's modulus (e.g., "230000" with type "MPa")</li>
-                    <li><strong>color</strong>: Visual appearance (e.g., "black" with type "string")</li>
-                    <li><strong>manufacturer</strong>: Material supplier (e.g., "Hexcel" with type "string")</li>
+                    <li><strong>description</strong>: Detailed description (e.g., "C-scan ultrasonic testing" with type "string")</li>
+                    <li><strong>frequency</strong>: Operating frequency (e.g., "5" with type "MHz")</li>
+                    <li><strong>resolution</strong>: Measurement resolution (e.g., "0.1" with type "mm")</li>
+                    <li><strong>standard</strong>: Testing standard (e.g., "ASTM_D3039" with type "standard")</li>
+                    <li><strong>equipment</strong>: Equipment used (e.g., "Olympus_OmniScan" with type "string")</li>
+                    <li><strong>operator</strong>: Person performing test (e.g., "John_Doe" with type "string")</li>
                 </ul>
             </div>
         </div>
         
-        <button type="submit">Save Material</button>
+        <button type="submit">Save Measurement Type</button>
     </form>
     
     <div class="nav-links">
-        <a href="{{ url_for('view_materials') }}">View All Materials</a>
+        <a href="{{ url_for('view_measurementtypes') }}">View All Measurement Types</a>
         <a href="{{ url_for('index') }}">Back to Main Menu</a>
     </div>
 
@@ -214,7 +274,7 @@
             newItem.style.display = 'block';
             
             // Update the header text
-            newItem.querySelector('h4').textContent = `Material Property ${metadataCount}`;
+            newItem.querySelector('h4').textContent = `Measurement Property ${metadataCount}`;
             
             // Clear any existing values
             const inputs = newItem.querySelectorAll('input');

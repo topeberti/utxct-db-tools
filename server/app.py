@@ -40,35 +40,61 @@ def materials_submit():
         # Get form data
         name = request.form.get('name')
         
+        # Validate material name
+        if not name or not name.strip():
+            flash('Material name is required.', 'error')
+            return redirect(url_for('materials_page'))
+        
         # Validate and convert layer_thickness to float
         try:
             layer_thickness = float(request.form.get('layer_thickness'))
-        except ValueError:
-            flash('Layer thickness must be a valid number.', 'error')
-            return redirect(url_for('materials_page'))
-        
-        # Parse and validate layer_layout
-        try:
-            # Split by commas and convert to integers
-            layer_layout_str = request.form.get('layer_layout')
-            layer_layout = [int(angle.strip()) for angle in layer_layout_str.split(',')]
-            
-            if not layer_layout:
-                raise ValueError("Layer layout cannot be empty")
+            if layer_thickness <= 0:
+                raise ValueError("Layer thickness must be positive")
         except ValueError as e:
-            flash(f'Invalid layer layout format: {str(e)}. Please enter comma-separated integers.', 'error')
+            flash('Layer thickness must be a valid positive number.', 'error')
             return redirect(url_for('materials_page'))
         
-        # Connect to database
+        # Parse additional metadata if provided
+        additional_metadata = None
+        metadata_keys = request.form.getlist('metadata_key[]')
+        metadata_values = request.form.getlist('metadata_value[]')
+        metadata_types = request.form.getlist('metadata_type[]')
+        
+        # Process metadata if any fields are provided
+        if metadata_keys and any(key.strip() for key in metadata_keys):
+            additional_metadata = []
+            
+            # Validate that all metadata entries have complete information
+            for i, (key, value, meta_type) in enumerate(zip(metadata_keys, metadata_values, metadata_types)):
+                key = key.strip()
+                value = value.strip()
+                meta_type = meta_type.strip()
+                
+                # Skip empty entries
+                if not key and not value and not meta_type:
+                    continue
+                
+                # Validate that all fields are filled for non-empty entries
+                if not key or not value or not meta_type:
+                    flash(f'Material property {i+1}: All fields (name, value, type) must be filled.', 'error')
+                    return redirect(url_for('materials_page'))
+                
+                additional_metadata.append({
+                    'key': key,
+                    'value': value,
+                    'type': meta_type
+                })
+        
+        # Connect to database and call load_material
         try:
             global conn
             if conn is None or conn.closed:
                 conn = dbt.connect()
             
-            # Call the load_material function
-            error = load.load_material(conn, name, layer_thickness, layer_layout)
+            # Call the load_material function with correct parameters
+            result = load.load_material(conn, name, layer_thickness, additional_metadata)
 
-            if error == -1:
+            if result == -1:
                 flash(f'Error loading material "{name}".', 'error')
             else:
                 flash(f'Material "{name}" successfully added to the database!', 'success')
@@ -176,11 +202,24 @@ def panels_page():
                 'metadata': formatted_metadata
             })
         
+        # Get all fabrication methods for the dropdown
+        cursor.execute("SELECT id, name FROM fabrications")
+        fabrications = cursor.fetchall()
+        
+        # Format fabrications as list of dictionaries
+        formatted_fabrications = []
+        for fabrication in fabrications:
+            fabrication_id, name = fabrication
+            formatted_fabrications.append({
+                'id': fabrication_id,
+                'name': name
+            })
+        
         cursor.close()
-        return render_template('panel.html', materials=formatted_materials)
+        return render_template('panel.html', materials=formatted_materials, fabrications=formatted_fabrications)
     
     except Exception as e:
-        flash(f'Error loading materials for panel form: {str(e)}', 'error')
+        flash(f'Error loading data for panel form: {str(e)}', 'error')
         return redirect(url_for('index'))
 
 @app.route('/panels/submit', methods=['GET', 'POST'])
@@ -190,6 +229,11 @@ def panels_submit():
         # Get form data
         name = request.form.get('name')
         
+        # Validate panel name
+        if not name or not name.strip():
+            flash('Panel name is required.', 'error')
+            return redirect(url_for('panels_page'))
+        
         # Validate and convert material_id to int
         try:
             material_id = int(request.form.get('material_id'))
@@ -197,31 +241,85 @@ def panels_submit():
             flash('Please select a valid material.', 'error')
             return redirect(url_for('panels_page'))
         
+        # Validate and convert fabrication_id to int
+        try:
+            fabrication_id = int(request.form.get('fabrication_id'))
+        except ValueError:
+            flash('Please select a valid fabrication method.', 'error')
+            return redirect(url_for('panels_page'))
+        
         # Validate and convert dimensions to float
         try:
             height = float(request.form.get('height'))
             width = float(request.form.get('width'))
             thickness = float(request.form.get('thickness'))
+            
+            if height <= 0 or width <= 0 or thickness <= 0:
+                raise ValueError("Dimensions must be positive")
         except ValueError:
-            flash('Dimensions must be valid numbers.', 'error')
+            flash('Dimensions must be valid positive numbers.', 'error')
             return redirect(url_for('panels_page'))
         
         # Get edges_cutted (checkbox)
         edges_cutted = request.form.get('edges_cutted') == 'true'
         
+        # Get optional layer_layout
+        layer_layout = None
+        layer_layout_str = request.form.get('layer_layout')
+        if layer_layout_str and layer_layout_str.strip():
+            try:
+                # Split by commas and convert to integers
+                layer_layout = [int(angle.strip()) for angle in layer_layout_str.split(',')]
+                if not layer_layout:
+                    raise ValueError("Layer layout cannot be empty if provided")
+            except ValueError as e:
+                flash(f'Invalid layer layout format: {str(e)}. Please enter comma-separated integers.', 'error')
+                return redirect(url_for('panels_page'))
+        
         # Get optional description
         description = request.form.get('description') or None
         
-        # Connect to database
+        # Parse additional metadata if provided
+        additional_metadata = None
+        metadata_keys = request.form.getlist('metadata_key[]')
+        metadata_values = request.form.getlist('metadata_value[]')
+        metadata_types = request.form.getlist('metadata_type[]')
+        
+        # Process metadata if any fields are provided
+        if metadata_keys and any(key.strip() for key in metadata_keys):
+            additional_metadata = []
+            
+            # Validate that all metadata entries have complete information
+            for i, (key, value, meta_type) in enumerate(zip(metadata_keys, metadata_values, metadata_types)):
+                key = key.strip()
+                value = value.strip()
+                meta_type = meta_type.strip()
+                
+                # Skip empty entries
+                if not key and not value and not meta_type:
+                    continue
+                
+                # Validate that all fields are filled for non-empty entries
+                if not key or not value or not meta_type:
+                    flash(f'Panel property {i+1}: All fields (name, value, type) must be filled.', 'error')
+                    return redirect(url_for('panels_page'))
+                
+                additional_metadata.append({
+                    'key': key,
+                    'value': value,
+                    'type': meta_type
+                })
+        
+        # Connect to database and call load_panel
         try:
             global conn
             if conn is None or conn.closed:
                 conn = dbt.connect()
             
-            # Call the load_panel function
-            error = load.load_panel(conn, name, material_id, height, width, thickness, edges_cutted, description)
+            # Call the load_panel function with correct parameters
+            result = load.load_panel(conn, name, material_id, fabrication_id, height, width, thickness, edges_cutted, layer_layout, description, additional_metadata)
 
-            if error == -1:
+            if result == -1:
                 flash(f'Error loading panel "{name}".', 'error')
             else:
                 flash(f'Panel "{name}" successfully added to the database!', 'success')
@@ -355,6 +453,11 @@ def samples_submit():
         # Get form data
         name = request.form.get('name')
         
+        # Validate sample name
+        if not name or not name.strip():
+            flash('Sample name is required.', 'error')
+            return redirect(url_for('samples_page'))
+        
         # Validate and convert panel_id to int
         try:
             panel_id = int(request.form.get('panel_id'))
@@ -367,8 +470,11 @@ def samples_submit():
             height = float(request.form.get('height'))
             width = float(request.form.get('width'))
             thickness = float(request.form.get('thickness'))
+            
+            if height <= 0 or width <= 0 or thickness <= 0:
+                raise ValueError("Dimensions must be positive")
         except ValueError:
-            flash('Dimensions must be valid numbers.', 'error')
+            flash('Dimensions must be valid positive numbers.', 'error')
             return redirect(url_for('samples_page'))
         
         # Get checkbox values
@@ -378,16 +484,47 @@ def samples_submit():
         # Get optional description
         description = request.form.get('description') or None
         
-        # Connect to database
+        # Parse additional metadata if provided
+        additional_metadata = None
+        metadata_keys = request.form.getlist('metadata_key[]')
+        metadata_values = request.form.getlist('metadata_value[]')
+        metadata_types = request.form.getlist('metadata_type[]')
+        
+        # Process metadata if any fields are provided
+        if metadata_keys and any(key.strip() for key in metadata_keys):
+            additional_metadata = []
+            
+            # Validate that all metadata entries have complete information
+            for i, (key, value, meta_type) in enumerate(zip(metadata_keys, metadata_values, metadata_types)):
+                key = key.strip()
+                value = value.strip()
+                meta_type = meta_type.strip()
+                
+                # Skip empty entries
+                if not key and not value and not meta_type:
+                    continue
+                
+                # Validate that all fields are filled for non-empty entries
+                if not key or not value or not meta_type:
+                    flash(f'Sample property {i+1}: All fields (name, value, type) must be filled.', 'error')
+                    return redirect(url_for('samples_page'))
+                
+                additional_metadata.append({
+                    'key': key,
+                    'value': value,
+                    'type': meta_type
+                })
+        
+        # Connect to database and call load_sample
         try:
             global conn
             if conn is None or conn.closed:
                 conn = dbt.connect()
             
-            # Call the load_sample function
-            error = load.load_sample(conn, name, panel_id, height, width, thickness, keyhole, parallel_faces, description)
+            # Call the load_sample function with correct parameters
+            result = load.load_sample(conn, name, panel_id, height, width, thickness, keyhole, parallel_faces, description, additional_metadata)
 
-            if error == -1:
+            if result == -1:
                 flash(f'Error loading sample "{name}".', 'error')
             else:
                 flash(f'Sample "{name}" successfully added to the database!', 'success')
@@ -556,14 +693,14 @@ def ut_measurements_submit():
                 flash('Axes order must contain unique values for x, y, and z.', 'error')
                 return redirect(url_for('ut_measurements_page'))
             
-            # Get sample IDs and names
+            # Get sample IDs and convert them to names
             try:
                 sample_ids = request.form.getlist('sample_ids')
                 if not sample_ids:
                     flash('Please select at least one sample.', 'error')
                     return redirect(url_for('ut_measurements_page'))
                 
-                # Get sample names from IDs using direct SQL query instead of dbtools functions
+                # Get sample names from IDs using direct SQL query
                 global conn
                 if conn is None or conn.closed:
                     conn = dbt.connect()
@@ -577,6 +714,37 @@ def ut_measurements_submit():
                 sample_names = [row[0] for row in cursor.fetchall()]
                 cursor.close()
                 
+                # Parse additional metadata if provided
+                additional_metadata = None
+                metadata_keys = request.form.getlist('metadata_key[]')
+                metadata_values = request.form.getlist('metadata_value[]')
+                metadata_types = request.form.getlist('metadata_type[]')
+                
+                # Process metadata if any fields are provided
+                if metadata_keys and any(key.strip() for key in metadata_keys):
+                    additional_metadata = []
+                    
+                    # Validate that all metadata entries have complete information
+                    for i, (key, value, meta_type) in enumerate(zip(metadata_keys, metadata_values, metadata_types)):
+                        key = key.strip()
+                        value = value.strip()
+                        meta_type = meta_type.strip()
+                        
+                        # Skip empty entries
+                        if not key and not value and not meta_type:
+                            continue
+                        
+                        # Validate that all fields are filled for non-empty entries
+                        if not key or not value or not meta_type:
+                            flash(f'Metadata field {i+1}: All fields (key, value, type) must be filled.', 'error')
+                            return redirect(url_for('ut_measurements_page'))
+                        
+                        additional_metadata.append({
+                            'key': key,
+                            'value': value,
+                            'type': meta_type
+                        })
+                
                 # Create a new connection for the load_ut_measurement function
                 # This avoids transaction conflicts with get_data_metadata
                 new_conn = dbt.connect()
@@ -586,7 +754,7 @@ def ut_measurements_submit():
                     new_conn, file_path, measurementtype_id, 
                     height, width, depth, dtype,
                     file_type, signal_type, axes_order,
-                    sample_names, parent_measurement_path, transformations
+                    sample_names, parent_measurement_path, transformations, additional_metadata
                 )
                 
                 # Close the new connection
@@ -794,7 +962,7 @@ def xct_measurements_submit():
                     flash('Please select at least one sample.', 'error')
                     return redirect(url_for('xct_measurements_page'))
                 
-                # Get sample names from IDs using direct SQL query instead of dbtools functions
+                # Get sample names from IDs using direct SQL query
                 global conn
                 if conn is None or conn.closed:
                     conn = dbt.connect()
@@ -808,15 +976,47 @@ def xct_measurements_submit():
                 sample_names = [row[0] for row in cursor.fetchall()]
                 cursor.close()
                 
+                # Parse additional metadata if provided
+                additional_metadata = None
+                metadata_keys = request.form.getlist('metadata_key[]')
+                metadata_values = request.form.getlist('metadata_value[]')
+                metadata_types = request.form.getlist('metadata_type[]')
+                
+                # Process metadata if any fields are provided
+                if metadata_keys and any(key.strip() for key in metadata_keys):
+                    additional_metadata = []
+                    
+                    # Validate that all metadata entries have complete information
+                    for i, (key, value, meta_type) in enumerate(zip(metadata_keys, metadata_values, metadata_types)):
+                        key = key.strip()
+                        value = value.strip()
+                        meta_type = meta_type.strip()
+                        
+                        # Skip empty entries
+                        if not key and not value and not meta_type:
+                            continue
+                        
+                        # Validate that all fields are filled for non-empty entries
+                        if not key or not value or not meta_type:
+                            flash(f'Metadata field {i+1}: All fields (key, value, type) must be filled.', 'error')
+                            return redirect(url_for('xct_measurements_page'))
+                        
+                        additional_metadata.append({
+                            'key': key,
+                            'value': value,
+                            'type': meta_type
+                        })
+                
                 # Create a new connection for the load_xct_measurement function
                 # This avoids transaction conflicts with get_data_metadata
                 new_conn = dbt.connect()
-                  # Call the load_xct_measurement function with the new connection
+                
+                # Call the load_xct_measurement function with the new connection
                 result = load.load_xct_measurement(
                     new_conn, file_path, measurementtype_id, 
                     height, width, depth, dtype, file_type,
                     sample_names, aligned, equalized, axes_order,
-                    parent_measurement_path, transformations
+                    parent_measurement_path, transformations, additional_metadata
                 )
                 
                 # Close the new connection
@@ -967,6 +1167,248 @@ def get_file_info():
         
     except Exception as e:
         return jsonify({'error': f'Error processing request: {str(e)}'}), 500
+
+@app.route('/fabrication')
+def fabrication_page():
+    """Render the fabrication form page."""
+    return render_template('fabrication.html')
+
+@app.route('/fabrication/submit', methods=['GET', 'POST'])
+def fabrication_submit():
+    """Handle the fabrication form submission."""
+    if request.method == 'POST':
+        # Get form data
+        name = request.form.get('name')
+        
+        # Validate fabrication name
+        if not name or not name.strip():
+            flash('Fabrication method name is required.', 'error')
+            return redirect(url_for('fabrication_page'))
+        
+        # Parse additional metadata if provided
+        additional_metadata = None
+        metadata_keys = request.form.getlist('metadata_key[]')
+        metadata_values = request.form.getlist('metadata_value[]')
+        metadata_types = request.form.getlist('metadata_type[]')
+        
+        # Process metadata if any fields are provided
+        if metadata_keys and any(key.strip() for key in metadata_keys):
+            additional_metadata = []
+            
+            # Validate that all metadata entries have complete information
+            for i, (key, value, meta_type) in enumerate(zip(metadata_keys, metadata_values, metadata_types)):
+                key = key.strip()
+                value = value.strip()
+                meta_type = meta_type.strip()
+                
+                # Skip empty entries
+                if not key and not value and not meta_type:
+                    continue
+                
+                # Validate that all fields are filled for non-empty entries
+                if not key or not value or not meta_type:
+                    flash(f'Metadata entry {i+1}: All fields (key, value, type) must be filled.', 'error')
+                    return redirect(url_for('fabrication_page'))
+                
+                additional_metadata.append({
+                    'key': key,
+                    'value': value,
+                    'type': meta_type
+                })
+        
+        # Connect to database and call load_fabrication
+        try:
+            global conn
+            if conn is None or conn.closed:
+                conn = dbt.connect()
+            
+            # Call the load_fabrication function
+            result = load.load_fabrication(conn, name, additional_metadata)
+
+            if result == -1:
+                flash(f'Error loading fabrication method "{name}".', 'error')
+            else:
+                flash(f'Fabrication method "{name}" successfully added to the database!', 'success')
+            return redirect(url_for('fabrication_page'))
+
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'error')
+            return redirect(url_for('fabrication_page'))
+    
+    # GET request - just show the form
+    return redirect(url_for('fabrication_page'))
+
+@app.route('/view_fabrications')
+def view_fabrications():
+    """View all fabrication methods in the database."""
+    try:
+        global conn
+        if conn is None or conn.closed:
+            conn = dbt.connect()
+        
+        # Create a cursor object
+        cursor = conn.cursor()
+        
+        # Execute query to get fabrication methods
+        cursor.execute("SELECT id, name FROM fabrications")
+        fabrications = cursor.fetchall()
+        
+        # Format fabrications as list of dictionaries
+        formatted_fabrications = []
+        for fabrication in fabrications:
+            fabrication_id, name = fabrication
+            
+            # Query metadata for this fabrication
+            cursor.execute(
+                "SELECT key, value, type FROM fabrication_metadata WHERE fabrication_id = %s",
+                (fabrication_id,)
+            )
+            metadata = cursor.fetchall()
+            
+            # Format metadata as list of dictionaries
+            formatted_metadata = []
+            for meta in metadata:
+                key, value, meta_type = meta
+                formatted_metadata.append({
+                    'key': key,
+                    'value': value,
+                    'type': meta_type
+                })
+            
+            # Add fabrication with its metadata to the list
+            formatted_fabrications.append({
+                'id': fabrication_id,
+                'name': name,
+                'metadata': formatted_metadata
+            })
+        
+        cursor.close()
+        return render_template('view_fabrications.html', fabrications=formatted_fabrications)
+        
+    except Exception as e:
+        flash(f'Error fetching fabrication methods: {str(e)}', 'error')
+        return redirect(url_for('fabrication_page'))
+
+@app.route('/measurementtype')
+def measurementtype_page():
+    """Render the measurement type form page."""
+    return render_template('measurementtype.html')
+
+@app.route('/measurementtype/submit', methods=['GET', 'POST'])
+def measurementtype_submit():
+    """Handle the measurement type form submission."""
+    if request.method == 'POST':
+        # Get form data
+        name = request.form.get('name')
+        
+        # Validate measurement type name
+        if not name or not name.strip():
+            flash('Measurement type name is required.', 'error')
+            return redirect(url_for('measurementtype_page'))
+        
+        # Parse additional metadata if provided
+        additional_metadata = None
+        metadata_keys = request.form.getlist('metadata_key[]')
+        metadata_values = request.form.getlist('metadata_value[]')
+        metadata_types = request.form.getlist('metadata_type[]')
+        
+        # Process metadata if any fields are provided
+        if metadata_keys and any(key.strip() for key in metadata_keys):
+            additional_metadata = []
+            
+            # Validate that all metadata entries have complete information
+            for i, (key, value, meta_type) in enumerate(zip(metadata_keys, metadata_values, metadata_types)):
+                key = key.strip()
+                value = value.strip()
+                meta_type = meta_type.strip()
+                
+                # Skip empty entries
+                if not key and not value and not meta_type:
+                    continue
+                
+                # Validate that all fields are filled for non-empty entries
+                if not key or not value or not meta_type:
+                    flash(f'Measurement property {i+1}: All fields (name, value, type) must be filled.', 'error')
+                    return redirect(url_for('measurementtype_page'))
+                
+                additional_metadata.append({
+                    'key': key,
+                    'value': value,
+                    'type': meta_type
+                })
+        
+        # Connect to database and call load_measurementtype
+        try:
+            global conn
+            if conn is None or conn.closed:
+                conn = dbt.connect()
+            
+            # Call the load_measurementtype function
+            result = load.load_measurementtype(conn, name, additional_metadata)
+
+            if result == -1:
+                flash(f'Error loading measurement type "{name}".', 'error')
+            else:
+                flash(f'Measurement type "{name}" successfully added to the database!', 'success')
+            return redirect(url_for('measurementtype_page'))
+
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'error')
+            return redirect(url_for('measurementtype_page'))
+    
+    # GET request - just show the form
+    return redirect(url_for('measurementtype_page'))
+
+@app.route('/view_measurementtypes')
+def view_measurementtypes():
+    """View all measurement types in the database."""
+    try:
+        global conn
+        if conn is None or conn.closed:
+            conn = dbt.connect()
+        
+        # Create a cursor object
+        cursor = conn.cursor()
+        
+        # Execute query to get measurement types
+        cursor.execute("SELECT id, name FROM measurementtypes")
+        measurementtypes = cursor.fetchall()
+        
+        # Format measurement types as list of dictionaries
+        formatted_measurementtypes = []
+        for measurementtype in measurementtypes:
+            measurementtype_id, name = measurementtype
+            
+            # Query metadata for this measurement type
+            cursor.execute(
+                "SELECT key, value, type FROM measurementtype_metadata WHERE measurementtype_id = %s",
+                (measurementtype_id,)
+            )
+            metadata = cursor.fetchall()
+            
+            # Format metadata as list of dictionaries
+            formatted_metadata = []
+            for meta in metadata:
+                key, value, meta_type = meta
+                formatted_metadata.append({
+                    'key': key,
+                    'value': value,
+                    'type': meta_type
+                })
+            
+            # Add measurement type with its metadata to the list
+            formatted_measurementtypes.append({
+                'id': measurementtype_id,
+                'name': name,
+                'metadata': formatted_metadata
+            })
+        
+        cursor.close()
+        return render_template('view_measurementtypes.html', measurementtypes=formatted_measurementtypes)
+        
+    except Exception as e:
+        flash(f'Error fetching measurement types: {str(e)}', 'error')
+        return redirect(url_for('measurementtype_page'))
 
 @app.teardown_appcontext
 def close_connection(exception):

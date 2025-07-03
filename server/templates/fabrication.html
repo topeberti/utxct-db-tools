@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Materials - Materials Database</title>
+    <title>Fabrication Methods - UTvsXCT Database</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -123,7 +123,8 @@
         }
     </style>
 </head>
-<body>    <h1>Materials Database</h1>
+<body>
+    <h1>UTvsXCT Database</h1>
     
     <!-- Flash Messages -->
     {% if get_flashed_messages() %}
@@ -134,69 +135,51 @@
     </div>
     {% endif %}
     
-    <h2>Add New Material</h2>
-    <form action="{{ url_for('materials_submit') }}" method="post">
-        <!-- Required Fields -->
+    <h2>Add New Fabrication Method</h2>
+    <form action="{{ url_for('fabrication_submit') }}" method="post">
+        <!-- Required Fabrication Name Field -->
         <div class="form-group">
-            <label for="name">Material Name:</label>
+            <label for="name">Fabrication Method Name:</label>
             <input type="text" id="name" name="name" required>
-            <div class="help-text">Enter a unique name for the material (e.g., "Carbon Fiber T300", "E-Glass", "Aluminum 6061")</div>
-        </div>
-        
-        <div class="form-group">
-            <label for="layer_thickness">Layer Thickness (mm):</label>
-            <input type="number" id="layer_thickness" name="layer_thickness" step="0.001" min="0.001" required>
-            <div class="help-text">Thickness of a single layer in millimeters (e.g., 0.125, 0.25, 1.0)</div>
+            <div class="help-text">Enter a unique name for the fabrication method (e.g., "Hand Layup", "Autoclave", "Vacuum Bagging")</div>
         </div>
         
         <!-- Optional Metadata Section -->
         <div class="metadata-section">
-            <h3>Additional Material Properties (Optional)</h3>
-            <p>Add any additional properties for this material such as layer layout, density, elastic modulus, etc.:</p>
+            <h3>Additional Metadata (Optional)</h3>
+            <p>Add any additional properties or parameters for this fabrication method:</p>
             
             <!-- Container for dynamic metadata fields -->
             <div id="metadata-container">
                 <!-- Initial metadata item (hidden by default) -->
                 <div class="metadata-item" style="display: none;">
                     <div class="metadata-header">
-                        <h4>Material Property</h4>
+                        <h4>Metadata Item</h4>
                         <button type="button" class="remove-metadata" onclick="removeMetadata(this)">Remove</button>
                     </div>
                     <div class="form-group">
-                        <label>Property Name:</label>
-                        <input type="text" name="metadata_key[]" placeholder="e.g., layer_layout, density, elastic_modulus, color">
+                        <label>Key/Property Name:</label>
+                        <input type="text" name="metadata_key[]" placeholder="e.g., temperature, pressure, time">
                     </div>
                     <div class="form-group">
                         <label>Value:</label>
-                        <input type="text" name="metadata_value[]" placeholder="e.g., [0,90,0,90], 1.6, 230000, blue">
+                        <input type="text" name="metadata_value[]" placeholder="e.g., 180, 7bar, 45min">
                     </div>
                     <div class="form-group">
                         <label>Unit/Type:</label>
-                        <input type="text" name="metadata_type[]" placeholder="e.g., degrees_array, g/cm3, MPa, string">
+                        <input type="text" name="metadata_type[]" placeholder="e.g., celsius, bar, minutes, string">
                     </div>
                 </div>
             </div>
             
-            <button type="button" class="add-metadata" onclick="addMetadata()">Add Property</button>
-            
-            <!-- Common Properties Helper -->
-            <div style="margin-top: 15px; padding: 10px; background-color: #e8f4f8; border-radius: 4px;">
-                <h4 style="margin-top: 0;">Common Properties:</h4>
-                <ul style="margin-bottom: 0; font-size: 0.9em;">
-                    <li><strong>layer_layout</strong>: Fiber orientation angles (e.g., "[0,90,45,-45]" with type "degrees_array")</li>
-                    <li><strong>density</strong>: Material density (e.g., "1.6" with type "g/cm3")</li>
-                    <li><strong>elastic_modulus</strong>: Young's modulus (e.g., "230000" with type "MPa")</li>
-                    <li><strong>color</strong>: Visual appearance (e.g., "black" with type "string")</li>
-                    <li><strong>manufacturer</strong>: Material supplier (e.g., "Hexcel" with type "string")</li>
-                </ul>
-            </div>
+            <button type="button" class="add-metadata" onclick="addMetadata()">Add Metadata</button>
         </div>
         
-        <button type="submit">Save Material</button>
+        <button type="submit">Save Fabrication Method</button>
     </form>
     
     <div class="nav-links">
-        <a href="{{ url_for('view_materials') }}">View All Materials</a>
+        <a href="{{ url_for('view_fabrications') }}">View All Fabrication Methods</a>
         <a href="{{ url_for('index') }}">Back to Main Menu</a>
     </div>
 
@@ -214,7 +197,7 @@
             newItem.style.display = 'block';
             
             // Update the header text
-            newItem.querySelector('h4').textContent = `Material Property ${metadataCount}`;
+            newItem.querySelector('h4').textContent = `Metadata Item ${metadataCount}`;
             
             // Clear any existing values
             const inputs = newItem.querySelectorAll('input');

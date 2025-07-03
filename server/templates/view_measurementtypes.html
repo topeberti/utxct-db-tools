@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Measurement Types - UTvsXCT Database</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .measurementtype-list {
+            margin-top: 20px;
+        }
+        .measurementtype-item {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .measurementtype-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .measurementtype-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 0;
+        }
+        .measurementtype-id {
+            background-color: #ecf0f1;
+            color: #7f8c8d;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .metadata-section {
+            margin-top: 15px;
+        }
+        .metadata-title {
+            font-weight: bold;
+            color: #34495e;
+            margin-bottom: 10px;
+        }
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+        }
+        .metadata-item {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #3498db;
+        }
+        .metadata-key {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .metadata-value {
+            color: #27ae60;
+            font-weight: 500;
+        }
+        .metadata-type {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            font-style: italic;
+        }
+        .no-metadata {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        .nav-links {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .nav-links a {
+            color: #3498db;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 10px 20px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        .nav-links a:hover {
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+        }
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .flash-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .empty-state {
+            text-align: center;
+            color: #7f8c8d;
+            margin: 40px 0;
+        }
+        .empty-state h3 {
+            color: #95a5a6;
+        }
+        .stats-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .stats-section h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .stats-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <h1>UTvsXCT Database</h1>
+    
+    <!-- Flash Messages -->
+    {% if get_flashed_messages() %}
+    <div class="flash-messages">
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <h2>Measurement Types</h2>
+    
+    {% if measurementtypes %}
+        <div class="stats-section">
+            <h3>Total Measurement Types</h3>
+            <div class="stats-number">{{ measurementtypes|length }}</div>
+        </div>
+        
+        <div class="measurementtype-list">
+            {% for measurementtype in measurementtypes %}
+                <div class="measurementtype-item">
+                    <div class="measurementtype-header">
+                        <h3 class="measurementtype-name">{{ measurementtype.name }}</h3>
+                        <span class="measurementtype-id">ID: {{ measurementtype.id }}</span>
+                    </div>
+                    
+                    {% if measurementtype.metadata %}
+                        <div class="metadata-section">
+                            <div class="metadata-title">Properties:</div>
+                            <div class="metadata-grid">
+                                {% for meta in measurementtype.metadata %}
+                                    <div class="metadata-item">
+                                        <div class="metadata-key">{{ meta.key }}</div>
+                                        <div class="metadata-value">{{ meta.value }}</div>
+                                        <div class="metadata-type">({{ meta.type }})</div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="no-metadata">No additional properties defined</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h3>No Measurement Types Found</h3>
+            <p>No measurement types have been added to the database yet.</p>
+        </div>
+    {% endif %}
+    
+    <div class="nav-links">
+        <a href="{{ url_for('measurementtype_page') }}">Add New Measurement Type</a>
+        <a href="{{ url_for('index') }}">Back to Main Menu</a>
+    </div>
+</body>
+</html>
