@@ -1153,7 +1153,7 @@ def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shap
 
     return row_id
 
-def load_registration(conn,transformation_matrix, reference_file_path, registered_file_path, registration_type, additional_metadata=None):
+def load_registration(conn,transformation_matrix, reference_file_path, registered_file_path, registration_type, axes, additional_metadata=None):
     """
     Load a registration into the database, including its metadata.
     
@@ -1169,7 +1169,11 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
         The file path of the registered measurement.
     registration_type : str
         Unique name for the registration type. Ie: 2024 registration algorithm v01
-        
+    axes : list
+        List of axes used in the registration, e.g., ['x', 'y', 'z'].
+    additional_metadata : list, optional
+        List of additional metadata to include with the registration.
+
     Returns:
     --------
     -1 if an error occurs, otherwise the ID of the inserted registration.
@@ -1186,6 +1190,9 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
     assert isinstance(reference_file_path, str) and reference_file_path, "Reference file path must be a non-empty string"
     assert isinstance(registered_file_path, str) and registered_file_path, "Registered file path must be a non-empty string"
     assert isinstance(registration_type, str) and registration_type, "Registration type must be a non-empty string"
+    assert isinstance(axes, list) and len(axes) > 0, "Axes must be a non-empty list"
+    assert all(isinstance(axis, str) for axis in axes), "All axes must be strings"
+    assert len(set(axes)) == len(axes), "Axes must contain unique values"
 
     # Validate additional_metadata if provided
     if additional_metadata is not None:
@@ -1229,7 +1236,9 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
     
     # Create the metadata parameters dictionary
     metadata_parameters = [
-        {table_name[:-1] + '_id': row_id, 'key': 'type', 'value': registration_type, 'type': 'text'}]
+        {table_name[:-1] + '_id': row_id, 'key': 'type', 'value': registration_type, 'type': 'text'},
+        {table_name[:-1] + '_id': row_id, 'key': 'axes', 'value': str(axes), 'type': 'list'}
+    ]
 
     # Add additional metadata if provided
     if additional_metadata is not None:
