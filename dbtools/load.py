@@ -1214,8 +1214,8 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
     measurements_data = measurements_data[measurements_data['file_path_measurement'].isin(measurement_paths)]
 
     # Extract the measurement IDs from the filtered data
-    reference_measurement_id = measurements_data[measurements_data['file_path_measurement'] == reference_file_path]['id_measurement'].values[0]
-    registered_measurement_id = measurements_data[measurements_data['file_path_measurement'] == registered_file_path]['id_measurement'].values[0]
+    reference_measurement_id = measurements_data[measurements_data['file_path_measurement'] == reference_file_path]['id_measurement'].values.tolist()[0]
+    registered_measurement_id = measurements_data[measurements_data['file_path_measurement'] == registered_file_path]['id_measurement'].values.tolist()[0]
     
     # Create the parameters dictionary for registration insertion
     parameters = {
