@@ -18,6 +18,7 @@ Dependencies:
 """
 
 import dbtools as dbt
+import pandas as pd
 
 def load_table(cursor, table_name, data):
     """
@@ -1003,156 +1004,6 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
 
     return row_id
 
-
-def load_dataset(conn, file_path, rows, patch_size, targets, reconstruction_shape, measurement_file_paths, description=None, additional_metadata=None):
-    """
-    Load a dataset into the database, including its metadata and measurement relationships.
-    
-    Parameters:
-    -----------
-    conn : psycopg2.connection
-        Database connection object.
-    file_path : str
-        The path to the dataset file.
-    rows : int
-        Number of rows in the dataset.
-    patch_size : str
-        Patch size of the dataset.
-    targets : list
-        List of targets for the dataset.
-    reconstruction_shape : tuple
-        Shape to see the dataset as an image.
-    measurement_file_paths : list
-        List of measurement file paths associated with this dataset.
-    description : str, optional
-        Dataset description.
-        
-    Returns:
-    --------
-    -1 if an error occurs, otherwise the ID of the inserted dataset.
-
-    Raises:
-    -------
-    AssertionError
-        If any of the input parameters don't meet the expected types/values.
-    """
-    # Validate input parameters    assert isinstance(file_path, str) and file_path, "File path must be a non-empty string"
-    assert isinstance(rows, int) and rows > 0, "Rows must be a positive integer"
-    assert isinstance(patch_size, str), "Patch size must be a string"
-    assert isinstance(targets, list) and all(isinstance(target, str) for target in targets), "Targets must be a list of strings"
-    assert isinstance(reconstruction_shape, tuple), "Reconstruction shape must be a tuple"
-    assert all(isinstance(dim, int) for dim in reconstruction_shape), "All dimensions in reconstruction shape must be integers"
-    assert isinstance(measurement_file_paths, list) and len(measurement_file_paths) > 0, "Measurement paths must be a non-empty list"
-    assert all(isinstance(path, str) for path in measurement_file_paths), "All measurement paths must be strings"
-
-    # Validate additional_metadata if provided
-    if additional_metadata is not None:
-        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
-        for item in additional_metadata:
-            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
-            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
-    
-    # Validate description if provided
-    if description is not None:
-        assert isinstance(description, str), "Description must be a string"
-    
-    # Create a cursor object and start a transaction
-    cursor = conn.cursor()
-    conn.autocommit = False  # Start transaction
-    
-    # Create the parameters dictionary for dataset insertion
-    parameters = {
-        'file_path': file_path
-    }
-    
-    # Add description if provided
-    if description is not None:
-        parameters['description'] = description
-    
-    # Load the dataset into the database
-    table_name = 'datasets'
-    try:
-        row_id = load_table(cursor, table_name, parameters)
-    except Exception as e:
-        print(f"Error loading dataset: {e}")
-        conn.rollback()
-        cursor.close()
-        return -1
-    
-    print(f"Dataset from '{file_path}' loaded with ID: {row_id}")
-    
-    # Create the metadata parameters dictionary
-    metadata_parameters = [
-        {table_name[:-1] + '_id': row_id, 'key': 'rows', 'value': str(rows), 'type': 'cardinal'},
-        {table_name[:-1] + '_id': row_id, 'key': 'patch_size', 'value': patch_size, 'type': 'pixels'},
-        {table_name[:-1] + '_id': row_id, 'key': 'reconstruction_shape', 'value': str(reconstruction_shape), 'type': 'pixels tuple'}
-    ]
-
-    # Add additional metadata if provided
-    if additional_metadata is not None:
-        for item in additional_metadata:
-            if item['type'] in ['Bool','Boolean','boolean']:
-                item['type'] = 'bool'
-            metadata_parameters.append({
-                table_name[:-1] + '_id': row_id,
-                'key': item['key'],
-                'value': item['value'],
-                'type': item['type']
-            })
-
-    for target in targets:
-        metadata_parameters.append({
-            table_name[:-1] + '_id': row_id, 
-            'key': 'target', 
-            'value': target, 
-            'type': 'nominal'
-        })
-    
-    metadata_table_name = 'dataset_metadata'
-    
-    # Insert each metadata entry
-    for attributes in metadata_parameters:
-        try:
-            load_table(cursor, metadata_table_name, attributes)
-        except Exception as e:
-            print(f"Error loading dataset metadata: {e}")
-            conn.rollback()
-            cursor.close()
-            return -1
-        # Insert measurement file paths into the measurement-dataset relationship table
-    measurements_data = dbt.get_data_metadata('measurements')
-
-    # Filter measurements to only include those whose file paths match the provided paths
-    measurements_data = measurements_data[measurements_data['file_path_measurement'].isin(measurement_file_paths)]
-
-    # Extract the measurement IDs from the filtered data
-    measurement_ids = measurements_data['id_measurement'].values.tolist()
-
-    # Define the name of the relational table that connects datasets and measurements
-    relational_table_name = 'dataset_measurements'
-
-    # Loop through each measurement ID to create the relationship with the dataset
-    for measurement_id in measurement_ids:
-        # Prepare parameters for the relationship entry
-        relational_parameters = {'dataset_id': row_id, 'measurement_id': measurement_id}
-
-        try:
-            # Insert the relationship into the relational table
-            load_table(cursor, relational_table_name, relational_parameters)
-        except Exception as e:
-            print(f"Error loading dataset-measurement relationship: {e}")
-            conn.rollback()
-            cursor.close()
-            return -1
-    
-    # Commit the transaction if everything is successful
-    conn.commit()
-    
-    # Close the cursor
-    cursor.close()
-
-    return row_id
-
 def load_registration(conn,transformation_matrix, reference_file_path, registered_file_path, registration_type, axes, additional_metadata=None):
     """
     Load a registration into the database, including its metadata.
@@ -1225,7 +1076,7 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
     }
 
     # Load the registration into the database
-    table_name = 'measurement_registrations'
+    table_name = 'registrations'
     try:
         row_id = load_table(cursor, table_name, parameters)
     except Exception as e:
@@ -1252,7 +1103,7 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
                 'type': item['type']
             })
     
-    metadata_table_name = 'measurement_registration_metadata'
+    metadata_table_name = 'registration_metadata'
     
     # Insert each metadata entry
     for attributes in metadata_parameters:
@@ -1274,5 +1125,201 @@ def load_registration(conn,transformation_matrix, reference_file_path, registere
 
     return row_id
 
+def load_datasettype(conn, description):
+
+    """
+    Load a dataset type into the database, including its metadata.
+    
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    description : str
+        Description of the dataset type.
+        
+    Returns:
+    --------
+    -1 if an error occurs, otherwise the ID of the inserted dataset type.
+        
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    """
+    # Validate input parameters
+    assert isinstance(description, str) and description, "Description must be a non-empty string"
+    
+    # Create a cursor object and start a transaction
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+
+    # Create the parameters dictionary for dataset type insertion
+    parameters = {
+        'description': description
+    }
+    
+    # Load the dataset type into the database
+    table_name = 'datasettypes'
+    try:
+        row_id = load_table(cursor, table_name, parameters)
+    except Exception as e:
+        print(f"Error loading dataset type: {e}")
+        conn.rollback()
+        cursor.close()
+        return -1
+
+    print(f"Dataset type loaded with ID: {row_id}")
+    
+    # Commit the transaction if everything is successful
+    conn.commit()
+    
+    # Close the cursor
+    cursor.close()
+
+    return row_id
 
 
+def load_dataset(conn,datasettype_id, file_path, rows, patch_size, targets, reconstruction_shape, registration_ids, description=None, additional_metadata=None):
+    """
+    Load a dataset into the database, including its metadata and measurement relationships.
+    
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    datasettype_id : int
+        ID of the dataset type.
+    file_path : str
+        The path to the dataset file.
+    rows : int
+        Number of rows in the dataset.
+    patch_size : str
+        Patch size of the dataset.
+    targets : list
+        List of targets for the dataset.
+    reconstruction_shape : tuple
+        Shape to see the dataset as an image.
+    registration_ids : list
+        List of IDs of the registrations associated with this dataset.
+    description : str, optional
+        Dataset description.
+        
+    Returns:
+    --------
+    -1 if an error occurs, otherwise the ID of the inserted dataset.
+
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    """
+    # Validate input parameters
+    assert isinstance(datasettype_id, int) and datasettype_id > 0, "Dataset type ID must be a positive integer"
+    assert isinstance(file_path, str) and file_path, "File path must be a non-empty string"
+    assert isinstance(rows, int) and rows > 0, "Rows must be a positive integer"
+    assert isinstance(patch_size, str), "Patch size must be a string"
+    assert isinstance(targets, list) and all(isinstance(target, str) for target in targets), "Targets must be a list of strings"
+    assert isinstance(reconstruction_shape, tuple), "Reconstruction shape must be a tuple"
+    assert all(isinstance(dim, int) for dim in reconstruction_shape), "All dimensions in reconstruction shape must be integers"
+    assert isinstance(registration_ids, list) and all(isinstance(reg_id, int) for reg_id in registration_ids), "Registration IDs must be a list of integers"
+
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
+    
+    # Validate description if provided
+    if description is not None:
+        assert isinstance(description, str), "Description must be a string"
+    
+    # Create a cursor object and start a transaction
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+    
+    # Create the parameters dictionary for dataset insertion
+    parameters = {
+        'file_path': file_path,
+        'datasettype_id': datasettype_id
+    }
+    
+    # Add description if provided
+    if description is not None:
+        parameters['description'] = description
+    
+    # Load the dataset into the database
+    table_name = 'datasets'
+    try:
+        row_id = load_table(cursor, table_name, parameters)
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        conn.rollback()
+        cursor.close()
+        return -1
+    
+    print(f"Dataset from '{file_path}' loaded with ID: {row_id}")
+    
+    # Create the metadata parameters dictionary
+    metadata_parameters = [
+        {table_name[:-1] + '_id': row_id, 'key': 'rows', 'value': str(rows), 'type': 'cardinal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'patch_size', 'value': patch_size, 'type': 'pixels'},
+        {table_name[:-1] + '_id': row_id, 'key': 'reconstruction_shape', 'value': str(reconstruction_shape), 'type': 'pixels tuple'}
+    ]
+
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
+
+    for target in targets:
+        metadata_parameters.append({
+            table_name[:-1] + '_id': row_id, 
+            'key': 'target', 
+            'value': target, 
+            'type': 'nominal'
+        })
+    
+    metadata_table_name = 'dataset_metadata'
+    
+    # Insert each metadata entry
+    for attributes in metadata_parameters:
+        try:
+            load_table(cursor, metadata_table_name, attributes)
+        except Exception as e:
+            print(f"Error loading dataset metadata: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+
+    # Define the name of the relational table that connects datasets and registrations
+    relational_table_name = 'dataset_registrations'
+
+    for registration_id in registration_ids:
+
+        # Prepare parameters for the relationship entry
+        relational_parameters = {'dataset_id': row_id, 'registration_id': registration_id}
+
+        try:
+            # Insert the relationship into the relational table
+            load_table(cursor, relational_table_name, relational_parameters)
+        except Exception as e:
+            print(f"Error loading dataset-registration relationship: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+    
+    # Commit the transaction if everything is successful
+    conn.commit()
+    
+    # Close the cursor
+    cursor.close()
+
+    return row_id
