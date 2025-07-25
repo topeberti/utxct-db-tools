@@ -12,7 +12,7 @@ def delete(conn,table_name,ids):
     Returns:
     None
     """
-    if not ids:
+    if len(ids) == 0:
         return
     
     #convert ids to int

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='dbtools',  # Change this to a valid name, e.g., 'myqueries'
-    version='0.1.13',
+    version='0.1.14',
     packages=find_packages(),
     install_requires=["psycopg2-binary", "python-dotenv", "pandas"],
     author='Alberto Vicente del Egido',
