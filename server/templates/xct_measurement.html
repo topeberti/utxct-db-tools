@@ -310,13 +310,6 @@
             
             // Add event listener to the button
             loadFileInfoBtn.addEventListener('click', loadFileInfo);
-            
-            // Also attempt to load file info when file path input loses focus
-            filePathInput.addEventListener('blur', function() {
-                if (filePathInput.value.trim() && !heightInput.value) {
-                    loadFileInfo();
-                }
-            });
         });
     </script>
 </head>
@@ -465,17 +458,6 @@
                 </div>
                 <button type="button" class="add-metadata" onclick="addMetadataField()">Add Metadata Field</button>
                 
-                <div class="metadata-examples">
-                    <h5>Example XCT metadata:</h5>
-                    <ul>
-                        <li><strong>voltage:</strong> 120 (int) - X-ray tube voltage in kV</li>
-                        <li><strong>current:</strong> 50.5 (float) - X-ray tube current in µA</li>
-                        <li><strong>exposure_time:</strong> 1000 (int) - Exposure time in ms</li>
-                        <li><strong>voxel_size:</strong> 0.25 (float) - Voxel size in mm</li>
-                        <li><strong>operator:</strong> John Smith (string) - Person who performed the scan</li>
-                        <li><strong>scan_date:</strong> 2024-01-15 (date) - Date of scanning</li>
-                    </ul>
-                </div>
             </div>
         </div>
         

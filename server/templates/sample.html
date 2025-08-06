@@ -113,41 +113,58 @@
             background-color: #ecf0f1;
             font-weight: bold;
         }
+        /* Metadata Section Styles */
         .metadata-section {
-            background-color: #f8f9fa;
-            padding: 20px;
+            border: 1px solid #ddd;
             border-radius: 4px;
-            margin-top: 20px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
         }
         .metadata-item {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            background-color: white;
-        }
-        .metadata-header {
             display: flex;
-            align-items: center;
+            gap: 10px;
             margin-bottom: 10px;
+            align-items: center;
         }
-        .metadata-header h4 {
-            margin: 0;
-            flex-grow: 1;
+        .metadata-item input, .metadata-item select {
+            flex: 1;
         }
         .remove-metadata {
             background-color: #e74c3c;
+            color: white;
+            border: none;
             padding: 5px 10px;
-            font-size: 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            white-space: nowrap;
         }
         .remove-metadata:hover {
             background-color: #c0392b;
         }
         .add-metadata {
             background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
         }
         .add-metadata:hover {
             background-color: #229954;
+        }
+        .metadata-examples {
+            background-color: #e8f4f8;
+            border: 1px solid #bee5eb;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .metadata-examples h5 {
+            margin: 0 0 5px 0;
+            color: #0c5460;
         }
         .help-text {
             font-size: 0.9em;
@@ -293,40 +310,12 @@
             
             <!-- Container for dynamic metadata fields -->
             <div id="metadata-container">
-                <!-- Initial metadata item (hidden by default) -->
-                <div class="metadata-item" style="display: none;">
-                    <div class="metadata-header">
-                        <h4>Sample Property</h4>
-                        <button type="button" class="remove-metadata" onclick="removeMetadata(this)">Remove</button>
-                    </div>
-                    <div class="form-group">
-                        <label>Property Name:</label>
-                        <input type="text" name="metadata_key[]" placeholder="e.g., defect_count, manufacturing_date, surface_condition">
-                    </div>
-                    <div class="form-group">
-                        <label>Value:</label>
-                        <input type="text" name="metadata_value[]" placeholder="e.g., 2, 2025-01-15, smooth">
-                    </div>
-                    <div class="form-group">
-                        <label>Unit/Type:</label>
-                        <input type="text" name="metadata_type[]" placeholder="e.g., integer, date, string">
-                    </div>
-                </div>
+                <!-- Dynamic metadata fields will be added here -->
             </div>
             
-            <button type="button" class="add-metadata" onclick="addMetadata()">Add Property</button>
+            <button type="button" class="add-metadata" onclick="addMetadataField()">Add Property</button>
             
-            <!-- Common Properties Helper -->
-            <div style="margin-top: 15px; padding: 10px; background-color: #e8f4f8; border-radius: 4px;">
-                <h4 style="margin-top: 0;">Common Properties:</h4>
-                <ul style="margin-bottom: 0; font-size: 0.9em;">
-                    <li><strong>defect_count</strong>: Number of visible defects (e.g., "3" with type "integer")</li>
-                    <li><strong>manufacturing_date</strong>: Production date (e.g., "2025-01-15" with type "date")</li>
-                    <li><strong>surface_condition</strong>: Surface quality (e.g., "smooth" with type "string")</li>
-                    <li><strong>weight</strong>: Sample weight (e.g., "15.2" with type "grams")</li>
-                    <li><strong>cutting_method</strong>: How sample was cut (e.g., "waterjet" with type "string")</li>
-                </ul>
-            </div>
+            
         </div>
         
         <button type="submit">Save Sample</button>
@@ -339,30 +328,31 @@
 
     <script>
         // JavaScript for dynamic metadata management
-        let metadataCount = 0;
+        let metadataCounter = 0;
         
-        function addMetadata() {
-            metadataCount++;
-            const container = document.getElementById('metadata-container');
-            const template = container.querySelector('.metadata-item');
-            const newItem = template.cloneNode(true);
-            
-            // Show the cloned item
-            newItem.style.display = 'block';
-            
-            // Update the header text
-            newItem.querySelector('h4').textContent = `Sample Property ${metadataCount}`;
-            
-            // Clear any existing values
-            const inputs = newItem.querySelectorAll('input');
-            inputs.forEach(input => input.value = '');
-            
-            container.appendChild(newItem);
+        function addMetadataField() {
+            metadataCounter++;
+            const metadataContainer = document.getElementById('metadata-container');
+            const metadataItem = document.createElement('div');
+            metadataItem.className = 'metadata-item';
+            metadataItem.innerHTML = `
+                <input type="text" name="metadata_key[]" placeholder="Key (e.g., defect_count)" required>
+                <input type="text" name="metadata_value[]" placeholder="Value (e.g., 3)" required>
+                <select name="metadata_type[]" required>
+                    <option value="">Type</option>
+                    <option value="string">Text</option>
+                    <option value="int">Integer</option>
+                    <option value="float">Decimal</option>
+                    <option value="bool">True/False</option>
+                    <option value="date">Date</option>
+                </select>
+                <button type="button" class="remove-metadata" onclick="removeMetadataField(this)">Remove</button>
+            `;
+            metadataContainer.appendChild(metadataItem);
         }
         
-        function removeMetadata(button) {
-            const metadataItem = button.closest('.metadata-item');
-            metadataItem.remove();
+        function removeMetadataField(button) {
+            button.parentNode.remove();
         }
     </script>
 </body>

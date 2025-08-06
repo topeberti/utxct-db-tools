@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View {{ table_title }} - UTvsXCT Database</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1, h2 {
+            color: #2c3e50;
+        }
+        
+        /* Controls Section */
+        .controls {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .controls h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-item label {
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #495057;
+        }
+        
+        .control-item input, .control-item select {
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        .control-item input {
+            min-width: 200px;
+        }
+        
+        .control-item select {
+            min-width: 150px;
+        }
+        
+        /* Column Visibility Controls */
+        .column-controls {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .column-toggles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        
+        .column-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            font-size: 0.85em;
+            white-space: nowrap;
+        }
+        
+        .column-toggle input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        /* Table Styles */
+        .table-container {
+            overflow: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            max-height: 70vh;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+        }
+        
+        th, td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            border-right: 1px solid #f1f3f4;
+            word-wrap: break-word;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+            position: sticky;
+            top: 0;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        th:hover {
+            background-color: #e9ecef;
+        }
+        
+        th.sortable::after {
+            content: ' ↕';
+            color: #6c757d;
+            font-weight: normal;
+        }
+        
+        th.sort-asc::after {
+            content: ' ↑';
+            color: #007bff;
+        }
+        
+        th.sort-desc::after {
+            content: ' ↓';
+            color: #007bff;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        
+        .hidden-column {
+            display: none;
+        }
+        
+        /* Info and Navigation */
+        .table-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        
+        .nav-links {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .nav-links a {
+            color: #007bff;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 10px 20px;
+            border: 1px solid #007bff;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+        
+        .nav-links a:hover {
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+        }
+        
+        /* Flash Messages */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .flash-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            background-color: white;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .pagination button:hover:not(:disabled) {
+            background-color: #e9ecef;
+        }
+        
+        .pagination button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .pagination .current-page {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .pagination input {
+            width: 60px;
+            text-align: center;
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .control-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-item input, .control-item select {
+                min-width: auto;
+                width: 100%;
+            }
+            
+            .column-toggles {
+                max-height: 100px;
+            }
+            
+            th, td {
+                padding: 8px 4px;
+                font-size: 0.85em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>UTvsXCT Database</h1>
+        
+        <!-- Flash Messages -->
+        {% if get_flashed_messages() %}
+        <div class="flash-messages">
+            {% for category, message in get_flashed_messages(with_categories=true) %}
+                <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <h2>Interactive {{ table_title }} View</h2>
+        
+        <!-- Controls Section -->
+        <div class="controls">
+            <h3>Table Controls</h3>
+            
+            <div class="control-group">
+                <div class="control-item">
+                    <label for="search-input">Search:</label>
+                    <input type="text" id="search-input" placeholder="Search in all columns...">
+                </div>
+                
+                <div class="control-item">
+                    <label for="column-filter">Filter by column:</label>
+                    <select id="column-filter">
+                        <option value="">All columns</option>
+                    </select>
+                </div>
+                
+                <div class="control-item">
+                    <label for="rows-per-page">Rows per page:</label>
+                    <select id="rows-per-page">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="-1">All</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="column-controls">
+                <h4>Column Visibility:</h4>
+                <div class="column-toggles" id="column-toggles">
+                    <!-- Column toggles will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Table Info -->
+        <div class="table-info">
+            <span id="table-info">Loading...</span>
+            <span id="filtered-info"></span>
+        </div>
+        
+        <!-- Table Container -->
+        <div class="table-container">
+            <table id="data-table">
+                <thead id="table-header">
+                    <!-- Headers will be populated by JavaScript -->
+                </thead>
+                <tbody id="table-body">
+                    <!-- Data will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="pagination" id="pagination">
+            <!-- Pagination will be populated by JavaScript -->
+        </div>
+        
+        <div class="nav-links">
+            <!-- Dynamic navigation based on table name -->
+            {% if table_name == 'materials' %}
+                <a href="{{ url_for('materials_page') }}">Add New Material</a>
+            {% elif table_name == 'fabrications' %}
+                <a href="{{ url_for('fabrication_page') }}">Add New Fabrication Method</a>
+            {% elif table_name == 'panels' %}
+                <a href="{{ url_for('panels_page') }}">Add New Panel</a>
+            {% elif table_name == 'samples' %}
+                <a href="{{ url_for('samples_page') }}">Add New Sample</a>
+            {% elif table_name == 'measurementtypes' %}
+                <a href="{{ url_for('measurementtype_page') }}">Add New Measurement Type</a>
+            {% endif %}
+            <a href="{{ url_for('index') }}">Back to Main Menu</a>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let tableData = {{ table_data | tojson }};
+        let tableName = {{ table_name | tojson }};
+        let filteredData = [...tableData.data];
+        let currentPage = 1;
+        let rowsPerPage = 25;
+        let sortColumn = -1;
+        let sortDirection = 'asc';
+        let visibleColumns = new Set();
+        
+        // Initialize the table
+        function initializeTable() {
+            // Initialize visible columns (all columns visible by default)
+            tableData.columns.forEach((col, index) => {
+                visibleColumns.add(index);
+            });
+            
+            createColumnToggles();
+            createColumnFilter();
+            renderTable();
+            updateTableInfo();
+            renderPagination();
+        }
+        
+        // Create column visibility toggles
+        function createColumnToggles() {
+            const container = document.getElementById('column-toggles');
+            container.innerHTML = '';
+            
+            tableData.columns.forEach((column, index) => {
+                const toggle = document.createElement('div');
+                toggle.className = 'column-toggle';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `col-${index}`;
+                checkbox.checked = true;
+                checkbox.addEventListener('change', () => toggleColumn(index));
+                
+                const label = document.createElement('label');
+                label.htmlFor = `col-${index}`;
+                label.textContent = column;
+                
+                toggle.appendChild(checkbox);
+                toggle.appendChild(label);
+                container.appendChild(toggle);
+            });
+        }
+        
+        // Create column filter dropdown
+        function createColumnFilter() {
+            const select = document.getElementById('column-filter');
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">All columns</option>';
+            
+            tableData.columns.forEach((column, index) => {
+                if (visibleColumns.has(index)) {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = column;
+                    select.appendChild(option);
+                }
+            });
+            
+            select.value = currentValue;
+        }
+        
+        // Toggle column visibility
+        function toggleColumn(columnIndex) {
+            if (visibleColumns.has(columnIndex)) {
+                visibleColumns.delete(columnIndex);
+            } else {
+                visibleColumns.add(columnIndex);
+            }
+            
+            createColumnFilter();
+            renderTable();
+            updateTableInfo();
+        }
+        
+        // Filter data based on search input
+        function filterData() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const columnFilter = document.getElementById('column-filter').value;
+            
+            if (!searchTerm) {
+                filteredData = [...tableData.data];
+            } else {
+                filteredData = tableData.data.filter(row => {
+                    if (columnFilter !== '') {
+                        // Search in specific column
+                        const cellValue = String(row[parseInt(columnFilter)] || '').toLowerCase();
+                        return cellValue.includes(searchTerm);
+                    } else {
+                        // Search in all visible columns
+                        return Array.from(visibleColumns).some(colIndex => {
+                            const cellValue = String(row[colIndex] || '').toLowerCase();
+                            return cellValue.includes(searchTerm);
+                        });
+                    }
+                });
+            }
+            
+            currentPage = 1;
+            renderTable();
+            updateTableInfo();
+            renderPagination();
+        }
+        
+        // Sort data
+        function sortData(columnIndex) {
+            if (sortColumn === columnIndex) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = columnIndex;
+                sortDirection = 'asc';
+            }
+            
+            filteredData.sort((a, b) => {
+                let aVal = a[columnIndex];
+                let bVal = b[columnIndex];
+                
+                // Handle null/undefined values
+                if (aVal === null || aVal === undefined) aVal = '';
+                if (bVal === null || bVal === undefined) bVal = '';
+                
+                // Convert to strings for comparison
+                aVal = String(aVal);
+                bVal = String(bVal);
+                
+                // Try to parse as numbers if possible
+                const aNum = parseFloat(aVal);
+                const bNum = parseFloat(bVal);
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+                }
+                
+                // String comparison
+                if (sortDirection === 'asc') {
+                    return aVal.localeCompare(bVal);
+                } else {
+                    return bVal.localeCompare(aVal);
+                }
+            });
+            
+            renderTable();
+        }
+        
+        // Render table
+        function renderTable() {
+            renderHeader();
+            renderBody();
+        }
+        
+        // Render table header
+        function renderHeader() {
+            const header = document.getElementById('table-header');
+            header.innerHTML = '';
+            
+            const headerRow = document.createElement('tr');
+            
+            Array.from(visibleColumns).forEach(columnIndex => {
+                const th = document.createElement('th');
+                th.textContent = tableData.columns[columnIndex];
+                th.className = 'sortable';
+                th.addEventListener('click', () => sortData(columnIndex));
+                
+                if (sortColumn === columnIndex) {
+                    th.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+                
+                headerRow.appendChild(th);
+            });
+            
+            header.appendChild(headerRow);
+        }
+        
+        // Render table body
+        function renderBody() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            
+            const startIndex = rowsPerPage === -1 ? 0 : (currentPage - 1) * rowsPerPage;
+            const endIndex = rowsPerPage === -1 ? filteredData.length : startIndex + rowsPerPage;
+            const pageData = filteredData.slice(startIndex, endIndex);
+            
+            pageData.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                Array.from(visibleColumns).forEach(columnIndex => {
+                    const td = document.createElement('td');
+                    const cellValue = row[columnIndex];
+                    
+                    // Format cell value
+                    if (cellValue === null || cellValue === undefined || cellValue === '') {
+                        td.textContent = '';
+                        td.style.color = '#6c757d';
+                        td.style.fontStyle = 'italic';
+                    } else {
+                        td.textContent = String(cellValue);
+                        td.title = String(cellValue); // Tooltip for long values
+                    }
+                    
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            });
+        }
+        
+        // Update table info
+        function updateTableInfo() {
+            const totalRows = tableData.data.length;
+            const filteredRows = filteredData.length;
+            const visibleCols = visibleColumns.size;
+            const totalCols = tableData.columns.length;
+            
+            document.getElementById('table-info').textContent = 
+                `Showing ${filteredRows} of ${totalRows} rows, ${visibleCols} of ${totalCols} columns`;
+            
+            const searchTerm = document.getElementById('search-input').value;
+            if (searchTerm) {
+                document.getElementById('filtered-info').textContent = 
+                    `Filtered by: "${searchTerm}"`;
+            } else {
+                document.getElementById('filtered-info').textContent = '';
+            }
+        }
+        
+        // Render pagination
+        function renderPagination() {
+            const container = document.getElementById('pagination');
+            
+            if (rowsPerPage === -1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            // Previous button
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '← Previous';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.addEventListener('click', () => goToPage(currentPage - 1));
+            container.appendChild(prevBtn);
+            
+            // Page info and input
+            const pageInfo = document.createElement('span');
+            pageInfo.innerHTML = `
+                Page <input type="number" value="${currentPage}" min="1" max="${totalPages}" 
+                       style="width: 60px; text-align: center;" id="page-input"> of ${totalPages}
+            `;
+            container.appendChild(pageInfo);
+            
+            // Next button
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Next →';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.addEventListener('click', () => goToPage(currentPage + 1));
+            container.appendChild(nextBtn);
+            
+            // Page input handler
+            document.getElementById('page-input').addEventListener('change', (e) => {
+                const page = parseInt(e.target.value);
+                if (page >= 1 && page <= totalPages) {
+                    goToPage(page);
+                } else {
+                    e.target.value = currentPage;
+                }
+            });
+        }
+        
+        // Go to specific page
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                renderBody();
+                renderPagination();
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('search-input').addEventListener('input', filterData);
+        document.getElementById('column-filter').addEventListener('change', filterData);
+        document.getElementById('rows-per-page').addEventListener('change', (e) => {
+            rowsPerPage = parseInt(e.target.value);
+            currentPage = 1;
+            renderBody();
+            renderPagination();
+        });
+        
+        // Initialize table when page loads
+        document.addEventListener('DOMContentLoaded', initializeTable);
+    </script>
+</body>
+</html>

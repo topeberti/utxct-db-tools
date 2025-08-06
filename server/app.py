@@ -31,7 +31,7 @@ def index():
 @app.route('/materials')
 def materials_page():
     """Render the materials form page."""
-    return render_template('index.html')
+    return render_template('materials.html')
 
 @app.route('/materials/submit', methods=['GET', 'POST'])
 def materials_submit():
@@ -109,54 +109,8 @@ def materials_submit():
 
 @app.route('/view_materials')
 def view_materials():
-    """View all materials in the database."""
-    try:
-        global conn
-        if conn is None or conn.closed:
-            conn = dbt.connect()
-        
-        # Create a cursor object
-        cursor = conn.cursor()
-        
-        # Execute query to get materials
-        cursor.execute("SELECT id, name FROM materials")
-        materials = cursor.fetchall()
-        
-        # Format materials as list of dictionaries
-        formatted_materials = []
-        for material in materials:
-            material_id, name = material
-            
-            # Query metadata for this material
-            cursor.execute(
-                "SELECT key, value, type FROM material_metadata WHERE material_id = %s",
-                (material_id,)
-            )
-            metadata = cursor.fetchall()
-            
-            # Format metadata as list of dictionaries
-            formatted_metadata = []
-            for meta in metadata:
-                key, value, meta_type = meta
-                formatted_metadata.append({
-                    'key': key,
-                    'value': value,
-                    'type': meta_type
-                })
-            
-            # Add material with its metadata to the list
-            formatted_materials.append({
-                'id': material_id,
-                'name': name,
-                'metadata': formatted_metadata
-            })
-        
-        cursor.close()
-        return render_template('view_materials.html', materials=formatted_materials)
-        
-    except Exception as e:
-        flash(f'Error fetching materials: {str(e)}', 'error')
-        return redirect(url_for('materials_page'))
+    """View all materials in the database using generic interactive table."""
+    return redirect(url_for('view_table', table_name='materials'))
 
 @app.route('/panels')
 def panels_page():
@@ -334,60 +288,18 @@ def panels_submit():
 
 @app.route('/view_panels')
 def view_panels():
-    """View all panels in the database."""
-    try:
-        global conn
-        if conn is None or conn.closed:
-            conn = dbt.connect()
-        
-        # Create a cursor object
-        cursor = conn.cursor()
-        
-        # Execute query to get panels with material names
-        cursor.execute("""
-            SELECT p.id, p.name, m.id as material_id, m.name as material_name 
-            FROM panels p
-            JOIN materials m ON p.material_id = m.id
-        """)
-        panels = cursor.fetchall()
-        
-        # Format panels as list of dictionaries
-        formatted_panels = []
-        for panel in panels:
-            panel_id, name, material_id, material_name = panel
-            
-            # Query metadata for this panel
-            cursor.execute(
-                "SELECT key, value, type FROM panel_metadata WHERE panel_id = %s",
-                (panel_id,)
-            )
-            metadata = cursor.fetchall()
-            
-            # Format metadata as list of dictionaries
-            formatted_metadata = []
-            for meta in metadata:
-                key, value, meta_type = meta
-                formatted_metadata.append({
-                    'key': key,
-                    'value': value,
-                    'type': meta_type
-                })
-            
-            # Add panel with its metadata to the list
-            formatted_panels.append({
-                'id': panel_id,
-                'name': name,
-                'material_id': material_id,
-                'material_name': material_name,
-                'metadata': formatted_metadata
-            })
-        
-        cursor.close()
-        return render_template('view_panels.html', panels=formatted_panels)
-        
-    except Exception as e:
-        flash(f'Error fetching panels: {str(e)}', 'error')
-        return redirect(url_for('panels_page'))
+    """View all panels in the database using generic interactive table."""
+    return redirect(url_for('view_table', table_name='panels'))
+
+@app.route('/view_samples')
+def view_samples():
+    """View all samples in the database using generic interactive table."""
+    return redirect(url_for('view_table', table_name='samples'))
+
+@app.route('/view_measurementtypes')
+def view_measurementtypes():
+    """View all measurement types in the database using generic interactive table."""
+    return redirect(url_for('view_table', table_name='measurementtypes'))
 
 @app.route('/samples')
 def samples_page():
@@ -537,62 +449,7 @@ def samples_submit():
     # GET request - just show the form
     return redirect(url_for('samples_page'))
 
-@app.route('/view_samples')
-def view_samples():
-    """View all samples in the database."""
-    try:
-        global conn
-        if conn is None or conn.closed:
-            conn = dbt.connect()
-        
-        # Create a cursor object
-        cursor = conn.cursor()
-        
-        # Execute query to get samples with panel names
-        cursor.execute("""
-            SELECT s.id, s.name, p.id as panel_id, p.name as panel_name 
-            FROM samples s
-            JOIN panels p ON s.panel_id = p.id
-        """)
-        samples = cursor.fetchall()
-        
-        # Format samples as list of dictionaries
-        formatted_samples = []
-        for sample in samples:
-            sample_id, name, panel_id, panel_name = sample
-            
-            # Query metadata for this sample
-            cursor.execute(
-                "SELECT key, value, type FROM sample_metadata WHERE sample_id = %s",
-                (sample_id,)
-            )
-            metadata = cursor.fetchall()
-            
-            # Format metadata as list of dictionaries
-            formatted_metadata = []
-            for meta in metadata:
-                key, value, meta_type = meta
-                formatted_metadata.append({
-                    'key': key,
-                    'value': value,
-                    'type': meta_type
-                })
-            
-            # Add sample with its metadata to the list
-            formatted_samples.append({
-                'id': sample_id,
-                'name': name,
-                'panel_id': panel_id,
-                'panel_name': panel_name,
-                'metadata': formatted_metadata
-            })
-        
-        cursor.close()
-        return render_template('view_samples.html', samples=formatted_samples)
-        
-    except Exception as e:
-        flash(f'Error fetching samples: {str(e)}', 'error')
-        return redirect(url_for('samples_page'))
+
 
 @app.route('/ut_measurements')
 def ut_measurements_page():
@@ -779,80 +636,11 @@ def ut_measurements_submit():
 
 @app.route('/view_ut_measurements')
 def view_ut_measurements():
-    """View all UT measurements in the database."""
-    try:
-        global conn
-        if conn is None or conn.closed:
-            conn = dbt.connect()
-        
-        # Create a cursor object
-        cursor = conn.cursor()
-        
-        # Execute query to get measurements with their measurement types
-        cursor.execute("""
-            SELECT m.id, m.file_path, m.parent_measurement_id, mt.id as measurementtype_id, mt.name as measurementtype_name 
-            FROM measurements m
-            JOIN measurementtypes mt ON m.measurementtype_id = mt.id
-        """)
-        measurements = cursor.fetchall()
-        
-        # Format measurements as list of dictionaries
-        formatted_measurements = []
-        for measurement in measurements:
-            measurement_id, file_path, parent_measurement_id, measurementtype_id, measurementtype_name = measurement
-            
-            # Query metadata for this measurement
-            cursor.execute(
-                "SELECT key, value, type FROM measurement_metadata WHERE measurement_id = %s",
-                (measurement_id,)
-            )
-            metadata = cursor.fetchall()
-            
-            # Format metadata as list of dictionaries
-            formatted_metadata = []
-            for meta in metadata:
-                key, value, meta_type = meta
-                formatted_metadata.append({
-                    'key': key,
-                    'value': value,
-                    'type': meta_type
-                })
-            
-            # Get associated samples
-            cursor.execute("""
-                SELECT s.id, s.name 
-                FROM samples s
-                JOIN sample_measurements sm ON s.id = sm.sample_id
-                WHERE sm.measurement_id = %s
-            """, (measurement_id,))
-            samples = cursor.fetchall()
-            
-            # Format samples as list of dictionaries
-            formatted_samples = []
-            for sample in samples:
-                sample_id, sample_name = sample
-                formatted_samples.append({
-                    'id': sample_id,
-                    'name': sample_name
-                })
-            
-            # Add measurement with its metadata and samples to the list
-            formatted_measurements.append({
-                'id': measurement_id,
-                'file_path': file_path,
-                'parent_measurement_id': parent_measurement_id,
-                'measurementtype_id': measurementtype_id,
-                'measurementtype_name': measurementtype_name,
-                'metadata': formatted_metadata,
-                'samples': formatted_samples
-            })
-        
-        cursor.close()
-        return render_template('view_ut_measurements.html', measurements=formatted_measurements)
-        
-    except Exception as e:
-        flash(f'Error fetching UT measurements: {str(e)}', 'error')
-        return redirect(url_for('ut_measurements_page'))
+    """View all UT measurements with their related samples using relational table."""
+    return redirect(url_for('view_relational_table', 
+                          main_table_name='measurements', 
+                          secondary_table_name='samples', 
+                          relational_table='sample_measurements'))
 
 @app.route('/xct_measurements')
 def xct_measurements_page():
@@ -1041,81 +829,11 @@ def xct_measurements_submit():
 
 @app.route('/view_xct_measurements')
 def view_xct_measurements():
-    """View all XCT measurements in the database."""
-    try:
-        global conn
-        if conn is None or conn.closed:
-            conn = dbt.connect()
-        
-        # Create a cursor object
-        cursor = conn.cursor()
-        
-        # Execute query to get measurements with their measurement types
-        cursor.execute("""
-            SELECT m.id, m.file_path, m.parent_measurement_id, mt.id as measurementtype_id, mt.name as measurementtype_name 
-            FROM measurements m
-            JOIN measurementtypes mt ON m.measurementtype_id = mt.id
-            WHERE mt.name LIKE '%XCT%' OR mt.name LIKE '%X-ray%'
-        """)
-        measurements = cursor.fetchall()
-        
-        # Format measurements as list of dictionaries
-        formatted_measurements = []
-        for measurement in measurements:
-            measurement_id, file_path, parent_measurement_id, measurementtype_id, measurementtype_name = measurement
-            
-            # Query metadata for this measurement
-            cursor.execute(
-                "SELECT key, value, type FROM measurement_metadata WHERE measurement_id = %s",
-                (measurement_id,)
-            )
-            metadata = cursor.fetchall()
-            
-            # Format metadata as list of dictionaries
-            formatted_metadata = []
-            for meta in metadata:
-                key, value, meta_type = meta
-                formatted_metadata.append({
-                    'key': key,
-                    'value': value,
-                    'type': meta_type
-                })
-            
-            # Get associated samples
-            cursor.execute("""
-                SELECT s.id, s.name 
-                FROM samples s
-                JOIN sample_measurements sm ON s.id = sm.sample_id
-                WHERE sm.measurement_id = %s
-            """, (measurement_id,))
-            samples = cursor.fetchall()
-            
-            # Format samples as list of dictionaries
-            formatted_samples = []
-            for sample in samples:
-                sample_id, sample_name = sample
-                formatted_samples.append({
-                    'id': sample_id,
-                    'name': sample_name
-                })
-            
-            # Add measurement with its metadata and samples to the list
-            formatted_measurements.append({
-                'id': measurement_id,
-                'file_path': file_path,
-                'parent_measurement_id': parent_measurement_id,
-                'measurementtype_id': measurementtype_id,
-                'measurementtype_name': measurementtype_name,
-                'metadata': formatted_metadata,
-                'samples': formatted_samples
-            })
-        
-        cursor.close()
-        return render_template('view_xct_measurements.html', measurements=formatted_measurements)
-        
-    except Exception as e:
-        flash(f'Error fetching XCT measurements: {str(e)}', 'error')
-        return redirect(url_for('xct_measurements_page'))
+    """View all XCT measurements with their related samples using relational table."""
+    return redirect(url_for('view_relational_table', 
+                          main_table_name='measurements', 
+                          secondary_table_name='samples', 
+                          relational_table='sample_measurements'))
 
 @app.route('/get_file_info', methods=['POST'])
 def get_file_info():
@@ -1240,54 +958,8 @@ def fabrication_submit():
 
 @app.route('/view_fabrications')
 def view_fabrications():
-    """View all fabrication methods in the database."""
-    try:
-        global conn
-        if conn is None or conn.closed:
-            conn = dbt.connect()
-        
-        # Create a cursor object
-        cursor = conn.cursor()
-        
-        # Execute query to get fabrication methods
-        cursor.execute("SELECT id, name FROM fabrications")
-        fabrications = cursor.fetchall()
-        
-        # Format fabrications as list of dictionaries
-        formatted_fabrications = []
-        for fabrication in fabrications:
-            fabrication_id, name = fabrication
-            
-            # Query metadata for this fabrication
-            cursor.execute(
-                "SELECT key, value, type FROM fabrication_metadata WHERE fabrication_id = %s",
-                (fabrication_id,)
-            )
-            metadata = cursor.fetchall()
-            
-            # Format metadata as list of dictionaries
-            formatted_metadata = []
-            for meta in metadata:
-                key, value, meta_type = meta
-                formatted_metadata.append({
-                    'key': key,
-                    'value': value,
-                    'type': meta_type
-                })
-            
-            # Add fabrication with its metadata to the list
-            formatted_fabrications.append({
-                'id': fabrication_id,
-                'name': name,
-                'metadata': formatted_metadata
-            })
-        
-        cursor.close()
-        return render_template('view_fabrications.html', fabrications=formatted_fabrications)
-        
-    except Exception as e:
-        flash(f'Error fetching fabrication methods: {str(e)}', 'error')
-        return redirect(url_for('fabrication_page'))
+    """View all fabrication methods in the database using generic interactive table."""
+    return redirect(url_for('view_table', table_name='fabrications'))
 
 @app.route('/measurementtype')
 def measurementtype_page():
@@ -1359,56 +1031,84 @@ def measurementtype_submit():
     # GET request - just show the form
     return redirect(url_for('measurementtype_page'))
 
-@app.route('/view_measurementtypes')
-def view_measurementtypes():
-    """View all measurement types in the database."""
+
+    
+@app.route('/view_table/<table_name>')
+def view_table(table_name):
+    """Generic function to view any table in the database using interactive dataframe."""
     try:
-        global conn
-        if conn is None or conn.closed:
-            conn = dbt.connect()
+        # Validate table name to prevent SQL injection
+        valid_tables = ['materials', 'fabrications', 'panels', 'samples', 'measurements', 'measurementtypes']
+        if table_name not in valid_tables:
+            flash(f'Invalid table name: {table_name}', 'error')
+            return redirect(url_for('index'))
         
-        # Create a cursor object
-        cursor = conn.cursor()
+        # Use the reference view_table approach
+        table_df = dbt.get_data_metadata(table_name)
         
-        # Execute query to get measurement types
-        cursor.execute("SELECT id, name FROM measurementtypes")
-        measurementtypes = cursor.fetchall()
+        # Handle NaN values for JSON serialization
+        table_df = table_df.fillna('')
         
-        # Format measurement types as list of dictionaries
-        formatted_measurementtypes = []
-        for measurementtype in measurementtypes:
-            measurementtype_id, name = measurementtype
-            
-            # Query metadata for this measurement type
-            cursor.execute(
-                "SELECT key, value, type FROM measurementtype_metadata WHERE measurementtype_id = %s",
-                (measurementtype_id,)
-            )
-            metadata = cursor.fetchall()
-            
-            # Format metadata as list of dictionaries
-            formatted_metadata = []
-            for meta in metadata:
-                key, value, meta_type = meta
-                formatted_metadata.append({
-                    'key': key,
-                    'value': value,
-                    'type': meta_type
-                })
-            
-            # Add measurement type with its metadata to the list
-            formatted_measurementtypes.append({
-                'id': measurementtype_id,
-                'name': name,
-                'metadata': formatted_metadata
-            })
+        # Convert DataFrame to dictionary format for JSON serialization
+        table_data = {
+            'columns': table_df.columns.tolist(),
+            'data': table_df.values.tolist()
+        }
         
-        cursor.close()
-        return render_template('view_measurementtypes.html', measurementtypes=formatted_measurementtypes)
+        # Create a title from table name (capitalize and handle plurals)
+        table_title = table_name.replace('_', ' ').title()
+        
+        return render_template('view_table_interactive.html', 
+                             table_data=table_data, 
+                             table_name=table_name,
+                             table_title=table_title)
         
     except Exception as e:
-        flash(f'Error fetching measurement types: {str(e)}', 'error')
-        return redirect(url_for('measurementtype_page'))
+        flash(f'Error fetching data from {table_name}: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/view_relational_table/<main_table_name>/<secondary_table_name>/<relational_table>')
+def view_relational_table(main_table_name, secondary_table_name, relational_table):
+    """Generic function to view relational tables for example, if you want to see the measurements, they have samples related to them
+    So the input of this function would be main_table_name = 'measurements', secondary_table_name = 'samples', relational_table = 'sample_measurements'
+    the table will have this format, all the columns from the main table will be columnname_maintablename[:-1], for example id_measurement.
+    The same will happen with the secondary table, all the columns will be columnname_secondarytablename[:-1], for example id_sample.
+    The idea is to have a view that for each row of the main table, you can see the related rows of the secondary table. Without seeing repeated the main row"""
+
+    try:
+        # Validate table names to prevent SQL injection
+        valid_tables = ['samples', 'measurements']
+        valid_relational_tables = ['sample_measurements']
+        
+        if (main_table_name not in valid_tables or 
+            secondary_table_name not in valid_tables or 
+            relational_table not in valid_relational_tables):
+            flash(f'Invalid table combination: {main_table_name}, {secondary_table_name}, {relational_table}', 'error')
+            return redirect(url_for('index'))
+        
+        # Use the relational metadata function
+        table_df = dbt.relation_metadata(main_table_name, secondary_table_name, relational_table)
+        
+        # Handle NaN values for JSON serialization
+        table_df = table_df.fillna('')
+        
+        # Convert DataFrame to dictionary format for JSON serialization
+        table_data = {
+            'columns': table_df.columns.tolist(),
+            'data': table_df.values.tolist()
+        }
+        
+        # Create a title for the relational view
+        table_title = f"{main_table_name.title()} with Related {secondary_table_name.title()}"
+        
+        return render_template('view_table_interactive.html', 
+                             table_data=table_data, 
+                             table_name=f"{main_table_name}_{secondary_table_name}",
+                             table_title=table_title)
+        
+    except Exception as e:
+        flash(f'Error fetching data from {main_table_name} and {secondary_table_name}: {str(e)}', 'error')
+        return redirect(url_for('index'))
 
 @app.teardown_appcontext
 def close_connection(exception):

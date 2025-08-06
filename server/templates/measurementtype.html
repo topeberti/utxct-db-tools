@@ -80,41 +80,58 @@
         .nav-links a:hover {
             text-decoration: underline;
         }
+        /* Metadata Section Styles */
         .metadata-section {
-            background-color: #f8f9fa;
-            padding: 20px;
+            border: 1px solid #ddd;
             border-radius: 4px;
-            margin-top: 20px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
         }
         .metadata-item {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            background-color: white;
-        }
-        .metadata-header {
             display: flex;
-            align-items: center;
+            gap: 10px;
             margin-bottom: 10px;
+            align-items: center;
         }
-        .metadata-header h4 {
-            margin: 0;
-            flex-grow: 1;
+        .metadata-item input, .metadata-item select {
+            flex: 1;
         }
         .remove-metadata {
             background-color: #e74c3c;
+            color: white;
+            border: none;
             padding: 5px 10px;
-            font-size: 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            white-space: nowrap;
         }
         .remove-metadata:hover {
             background-color: #c0392b;
         }
         .add-metadata {
             background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
         }
         .add-metadata:hover {
             background-color: #229954;
+        }
+        .metadata-examples {
+            background-color: #e8f4f8;
+            border: 1px solid #bee5eb;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .metadata-examples h5 {
+            margin: 0 0 5px 0;
+            color: #0c5460;
         }
         .help-text {
             font-size: 0.9em;
@@ -168,38 +185,6 @@
     
     <h2>Add New Measurement Type</h2>
     
-    <!-- Examples Section -->
-    <div class="examples-section">
-        <h3>Common Measurement Types</h3>
-        <p>Measurement types define the kind of testing or measurement being performed. Here are some common examples:</p>
-        <div class="examples-list">
-            <div class="example-item">
-                <div class="example-title">Ultrasonic Testing (UT)</div>
-                <div class="example-desc">Non-destructive testing using ultrasonic waves to detect internal defects</div>
-            </div>
-            <div class="example-item">
-                <div class="example-title">X-ray Computed Tomography (XCT)</div>
-                <div class="example-desc">3D imaging technique for internal structure analysis</div>
-            </div>
-            <div class="example-item">
-                <div class="example-title">Tensile Testing</div>
-                <div class="example-desc">Mechanical testing to determine material strength and elongation</div>
-            </div>
-            <div class="example-item">
-                <div class="example-title">Compression Testing</div>
-                <div class="example-desc">Testing material behavior under compressive loads</div>
-            </div>
-            <div class="example-item">
-                <div class="example-title">Fatigue Testing</div>
-                <div class="example-desc">Testing material endurance under cyclic loading</div>
-            </div>
-            <div class="example-item">
-                <div class="example-title">Impact Testing</div>
-                <div class="example-desc">Testing material toughness and energy absorption</div>
-            </div>
-        </div>
-    </div>
-    
     <form action="{{ url_for('measurementtype_submit') }}" method="post">
         <!-- Required Measurement Type Name Field -->
         <div class="form-group">
@@ -215,41 +200,11 @@
             
             <!-- Container for dynamic metadata fields -->
             <div id="metadata-container">
-                <!-- Initial metadata item (hidden by default) -->
-                <div class="metadata-item" style="display: none;">
-                    <div class="metadata-header">
-                        <h4>Measurement Property</h4>
-                        <button type="button" class="remove-metadata" onclick="removeMetadata(this)">Remove</button>
-                    </div>
-                    <div class="form-group">
-                        <label>Property Name:</label>
-                        <input type="text" name="metadata_key[]" placeholder="e.g., frequency, resolution, standard">
-                    </div>
-                    <div class="form-group">
-                        <label>Value:</label>
-                        <input type="text" name="metadata_value[]" placeholder="e.g., 5MHz, 0.1mm, ASTM_D3039">
-                    </div>
-                    <div class="form-group">
-                        <label>Unit/Type:</label>
-                        <input type="text" name="metadata_type[]" placeholder="e.g., frequency, mm, standard">
-                    </div>
-                </div>
+                <!-- Dynamic metadata fields will be added here -->
             </div>
             
-            <button type="button" class="add-metadata" onclick="addMetadata()">Add Property</button>
+            <button type="button" class="add-metadata" onclick="addMetadataField()">Add Property</button>
             
-            <!-- Common Properties Helper -->
-            <div style="margin-top: 15px; padding: 10px; background-color: #e8f4f8; border-radius: 4px;">
-                <h4 style="margin-top: 0;">Common Properties:</h4>
-                <ul style="margin-bottom: 0; font-size: 0.9em;">
-                    <li><strong>description</strong>: Detailed description (e.g., "C-scan ultrasonic testing" with type "string")</li>
-                    <li><strong>frequency</strong>: Operating frequency (e.g., "5" with type "MHz")</li>
-                    <li><strong>resolution</strong>: Measurement resolution (e.g., "0.1" with type "mm")</li>
-                    <li><strong>standard</strong>: Testing standard (e.g., "ASTM_D3039" with type "standard")</li>
-                    <li><strong>equipment</strong>: Equipment used (e.g., "Olympus_OmniScan" with type "string")</li>
-                    <li><strong>operator</strong>: Person performing test (e.g., "John_Doe" with type "string")</li>
-                </ul>
-            </div>
         </div>
         
         <button type="submit">Save Measurement Type</button>
@@ -262,30 +217,31 @@
 
     <script>
         // JavaScript for dynamic metadata management
-        let metadataCount = 0;
+        let metadataCounter = 0;
         
-        function addMetadata() {
-            metadataCount++;
-            const container = document.getElementById('metadata-container');
-            const template = container.querySelector('.metadata-item');
-            const newItem = template.cloneNode(true);
-            
-            // Show the cloned item
-            newItem.style.display = 'block';
-            
-            // Update the header text
-            newItem.querySelector('h4').textContent = `Measurement Property ${metadataCount}`;
-            
-            // Clear any existing values
-            const inputs = newItem.querySelectorAll('input');
-            inputs.forEach(input => input.value = '');
-            
-            container.appendChild(newItem);
+        function addMetadataField() {
+            metadataCounter++;
+            const metadataContainer = document.getElementById('metadata-container');
+            const metadataItem = document.createElement('div');
+            metadataItem.className = 'metadata-item';
+            metadataItem.innerHTML = `
+                <input type="text" name="metadata_key[]" placeholder="Key (e.g., frequency)" required>
+                <input type="text" name="metadata_value[]" placeholder="Value (e.g., 5)" required>
+                <select name="metadata_type[]" required>
+                    <option value="">Type</option>
+                    <option value="string">Text</option>
+                    <option value="int">Integer</option>
+                    <option value="float">Decimal</option>
+                    <option value="bool">True/False</option>
+                    <option value="date">Date</option>
+                </select>
+                <button type="button" class="remove-metadata" onclick="removeMetadataField(this)">Remove</button>
+            `;
+            metadataContainer.appendChild(metadataItem);
         }
         
-        function removeMetadata(button) {
-            const metadataItem = button.closest('.metadata-item');
-            metadataItem.remove();
+        function removeMetadataField(button) {
+            button.parentNode.remove();
         }
     </script>
 </body>

@@ -306,13 +306,6 @@
             
             // Add event listener to the button
             loadFileInfoBtn.addEventListener('click', loadFileInfo);
-            
-            // Also attempt to load file info when file path input loses focus
-            filePathInput.addEventListener('blur', function() {
-                if (filePathInput.value.trim() && !heightInput.value) {
-                    loadFileInfo();
-                }
-            });
         });
     </script>
 </head>
@@ -452,16 +445,6 @@
                 </div>
                 <button type="button" class="add-metadata" onclick="addMetadataField()">Add Metadata Field</button>
                 
-                <div class="metadata-examples">
-                    <h5>Example metadata:</h5>
-                    <ul>
-                        <li><strong>frequency:</strong> 5.0 (float) - Measurement frequency in MHz</li>
-                        <li><strong>temperature:</strong> 23.5 (float) - Ambient temperature in °C</li>
-                        <li><strong>operator:</strong> John Smith (string) - Person who performed the measurement</li>
-                        <li><strong>calibrated:</strong> true (boolean) - Whether the equipment was calibrated</li>
-                        <li><strong>measurement_date:</strong> 2024-01-15 (date) - Date of measurement</li>
-                    </ul>
-                </div>
             </div>
         </div>
         
