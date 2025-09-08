@@ -279,7 +279,7 @@ def load_material(conn, name, layer_thickness, additional_metadata=None):
     return row_id
 
 
-def load_panel(conn, name, material_id, fabrication_id, height, width, thickness, edges_cutted, layer_layout=None, description=None, additional_metadata=None):
+def load_panel(conn, name, material_id, fabrication_id, height, width, thickness, layer_layout=None, description=None, additional_metadata=None):
     """
     Load a panel into the database, including its metadata.
     
@@ -305,8 +305,6 @@ def load_panel(conn, name, material_id, fabrication_id, height, width, thickness
         Width of the panel in millimeters.
     thickness : float
         Thickness of the panel in millimeters.
-    edges_cutted : bool
-        Whether the edges have been cut/finished.
     layer_layout : list, optional
         List of integers representing the layer layout configuration.
     description : str, optional
@@ -334,7 +332,6 @@ def load_panel(conn, name, material_id, fabrication_id, height, width, thickness
     assert isinstance(height, (float, int)) and height > 0, "Height must be a positive number"
     assert isinstance(width, (float, int)) and width > 0, "Width must be a positive number"
     assert isinstance(thickness, (float, int)) and thickness > 0, "Thickness must be a positive number"
-    assert isinstance(edges_cutted, bool), "edges_cutted must be a boolean"
     
     # Validate layer_layout if provided
     if layer_layout is not None:
@@ -382,8 +379,7 @@ def load_panel(conn, name, material_id, fabrication_id, height, width, thickness
     metadata_parameters = [
         {table_name[:-1] + '_id': row_id, 'key': 'height', 'value': str(height), 'type': 'mm'},
         {table_name[:-1] + '_id': row_id, 'key': 'width', 'value': str(width), 'type': 'mm'},
-        {table_name[:-1] + '_id': row_id, 'key': 'thickness', 'value': str(thickness), 'type': 'mm'},
-        {table_name[:-1] + '_id': row_id, 'key': 'edges_cutted', 'value': str(edges_cutted), 'type': 'bool'}
+        {table_name[:-1] + '_id': row_id, 'key': 'thickness', 'value': str(thickness), 'type': 'mm'}
     ]
     
     # Add layer_layout metadata if provided
@@ -1323,3 +1319,328 @@ def load_dataset(conn,datasettype_id, file_path, rows, patch_size, targets, reco
     cursor.close()
 
     return row_id
+
+
+def load_experiment(conn, folder_path, description, author, dataset_paths, additional_metadata=None):
+    """
+    Load an experiment into the database, including its metadata.
+    
+    This function inserts a new experiment record into the 'experiments' table and
+    stores any additional metadata in the 'experiment_metadata' table. Experiments
+    serve as high-level containers for complete research initiatives, linking
+    together models, datasets, and other components of the experimental process.
+    The function handles the database transaction, committing on success or 
+    rolling back on failure.
+
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    folder_path : str
+        The absolute path to the root directory where all files and subfolders
+        related to the experiment are stored. Must be unique.
+    description : str
+        A detailed textual description of the experiment's goals, methodology,
+        and overall purpose.
+    author : str
+        The name of the researcher or team who conducted the experiment. This is
+        a required field that will be stored as metadata.
+    dataset_paths : list
+        List of dataset file paths that are associated with this experiment.
+        Used to populate the experiment_datasets relational table. This is a
+        required parameter - experiments must be associated with at least one dataset.
+        Example: ['/path/to/dataset1.h5', '/path/to/dataset2.h5']
+    additional_metadata : list, optional
+        List of dictionaries containing additional metadata.
+        Each dictionary should have 'key', 'value', and 'type' keys.
+        Example: [{'key': 'start_date', 'value': '2025-01-15', 'type': 'date'}, 
+                  {'key': 'funding_source', 'value': 'EU Grant', 'type': 'string'}]
+        
+    Returns:
+    --------
+    int
+        The ID of the inserted experiment, or -1 if an error occurs.
+        
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    """
+    # Validate input parameters
+    assert isinstance(folder_path, str) and folder_path, "Folder path must be a non-empty string"
+    assert isinstance(description, str) and description, "Description must be a non-empty string"
+    assert isinstance(author, str) and author, "Author must be a non-empty string"
+    assert isinstance(dataset_paths, list), "dataset_paths must be a list"
+    assert len(dataset_paths) > 0, "dataset_paths must be a non-empty list"
+    assert all(isinstance(path, str) and path for path in dataset_paths), "All dataset paths must be non-empty strings"
+    
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
+
+    # Create a cursor object and start a transaction
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+
+    # Create the parameters dictionary for experiment insertion
+    parameters = {
+        'folder_path': folder_path,
+        'description': description
+    }
+    
+    # Load the experiment into the database
+    table_name = 'experiments'
+    try:
+        row_id = load_table(cursor, table_name, parameters)
+    except Exception as e:
+        print(f"Error loading experiment: {e}")
+        conn.rollback()
+        cursor.close()
+        return -1
+
+    print(f"Experiment at '{folder_path}' loaded with ID: {row_id}")
+
+    # Create the metadata parameters dictionary with mandatory author
+    metadata_parameters = [
+        {table_name[:-1] + '_id': row_id, 'key': 'author', 'value': author, 'type': 'string'}
+    ]
+    
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
+
+    metadata_table_name = 'experiment_metadata'
+
+    # Insert each metadata entry
+    for attributes in metadata_parameters:
+        try:
+            load_table(cursor, metadata_table_name, attributes)
+        except Exception as e:
+            print(f"Error loading experiment metadata: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+    
+    # Insert dataset relationships into the experiment_datasets table
+    datasets_data = dbt.get_data_metadata('datasets')
+
+    # Get the ids of the datasets in dataset_paths
+    datasets_data = datasets_data[datasets_data['file_path_dataset'].isin(dataset_paths)]
+
+    dataset_ids = datasets_data['id_dataset'].values.tolist()
+
+    relational_table_name = 'experiment_datasets'
+
+    if len(dataset_ids) == 0:
+        print("No datasets found for the provided dataset paths. Experiment will not be linked to any datasets.")
+        conn.rollback()
+        cursor.close()
+        return -1
+
+    for dataset_id in dataset_ids:
+
+        relational_parameters = {'experiment_id': row_id, 'dataset_id': dataset_id}
+
+        try:
+            load_table(cursor, relational_table_name, relational_parameters)
+        except Exception as e:
+            print(f"Error loading experiment-dataset relationship: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+    
+    # Commit the transaction if everything is successful
+    conn.commit()
+
+    # Close the cursor
+    cursor.close()
+
+    return row_id
+
+
+def load_model(conn, experiment_folder_path, model_folder_path, architecture, description=None, parameters=None, trainable_parameters=None, computed_metrics=None, additional_metadata=None):
+    """
+    Load a model into the database, including its metadata.
+    
+    This function inserts a new model record into the 'models' table and stores
+    any additional metadata in the 'model_metadata' table. Models are products
+    of experiments and are linked via experiment_id. The function handles the
+    database transaction, committing on success or rolling back on failure.
+
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    experiment_folder_path : str
+        The folder path of the experiment that produced this model. This will be
+        used to lookup the experiment_id from the experiments table.
+    model_folder_path : str
+        The path to the specific directory containing the model's files, such as
+        weights, architecture definition, and related artifacts. Must be unique.
+    architecture : str
+        The architecture type of the model (e.g., 'CNN', 'LSTM', 'Transformer'). 
+        This is a required field that will be stored as metadata.
+    description : str, optional
+        Textual description of the model, including details about its architecture,
+        purpose, or unique characteristics.
+    parameters : int, optional
+        The total number of parameters in the model.
+    trainable_parameters : int, optional
+        The number of parameters that are updated during training.
+    computed_metrics : dict, optional
+        Dictionary containing key performance indicators of the model evaluated
+        on a test dataset. Supported keys: 'mse', 'mae', 'r2', 'coverage', 'bias'.
+        Example: {'mse': 0.045, 'mae': 0.12, 'r2': 0.89, 'coverage': 0.95, 'bias': 0.02}
+    additional_metadata : list, optional
+        List of dictionaries containing additional metadata.
+        Each dictionary should have 'key', 'value', and 'type' keys.
+        Example: [{'key': 'epochs', 'value': 100, 'type': 'integer'}, 
+                  {'key': 'learning_rate', 'value': 0.001, 'type': 'float'}]
+        
+    Returns:
+    --------
+    int
+        The ID of the inserted model, or -1 if an error occurs.
+        
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    """
+    # Validate input parameters
+    assert isinstance(experiment_folder_path, str) and experiment_folder_path, "Experiment folder path must be a non-empty string"
+    assert isinstance(model_folder_path, str) and model_folder_path, "Model folder path must be a non-empty string"
+    assert isinstance(architecture, str) and architecture, "Architecture must be a non-empty string"
+    
+    # Validate description if provided
+    if description is not None:
+        assert isinstance(description, str), "Description must be a string"
+    
+    # Validate parameters if provided
+    if parameters is not None:
+        assert isinstance(parameters, int) and parameters >= 0, "Parameters must be a non-negative integer"
+    
+    # Validate trainable_parameters if provided
+    if trainable_parameters is not None:
+        assert isinstance(trainable_parameters, int) and trainable_parameters >= 0, "Trainable parameters must be a non-negative integer"
+    
+    # Validate computed_metrics if provided
+    if computed_metrics is not None:
+        assert isinstance(computed_metrics, dict), "Computed metrics must be a dictionary"
+        for key, value in computed_metrics.items():
+            assert isinstance(value, (float, int)), f"Metric '{key}' must be a numeric value"
+    
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
+
+    # Create a cursor object and start a transaction
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+
+    # Get the experiment_id from the experiment folder path
+    experiment_id = dbt.get_id('experiments', ['folder_path_experiment'], [experiment_folder_path])
+
+    # Create the parameters dictionary for model insertion
+    parameters_dict = {
+        'experiment_id': int(experiment_id),
+        'model_folder_path': model_folder_path
+    }
+    
+    # Add description if provided
+    if description is not None:
+        parameters_dict['description'] = description
+    
+    # Load the model into the database
+    table_name = 'models'
+    try:
+        row_id = load_table(cursor, table_name, parameters_dict)
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        conn.rollback()
+        cursor.close()
+        return -1
+
+    print(f"Model at '{model_folder_path}' loaded with ID: {row_id}")
+
+    # Create the metadata parameters dictionary with mandatory architecture
+    metadata_parameters = [
+        {table_name[:-1] + '_id': row_id, 'key': 'architecture', 'value': architecture, 'type': 'nominal'}
+    ]
+    
+    # Add parameters metadata if provided
+    if parameters is not None:
+        metadata_parameters.append({
+            table_name[:-1] + '_id': row_id,
+            'key': 'parameters',
+            'value': str(parameters),
+            'type': 'cardinal'
+        })
+    
+    # Add trainable_parameters metadata if provided
+    if trainable_parameters is not None:
+        metadata_parameters.append({
+            table_name[:-1] + '_id': row_id,
+            'key': 'trainable_parameters',
+            'value': str(trainable_parameters),
+            'type': 'cardinal'
+        })
+    
+    # Add computed_metrics metadata if provided
+    if computed_metrics is not None:
+        for metric_name, metric_value in computed_metrics.items():
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': metric_name,
+                'value': str(metric_value),
+                'type': 'numerical'
+            })
+    
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
+
+    metadata_table_name = 'model_metadata'
+
+    # Insert each metadata entry
+    for attributes in metadata_parameters:
+        try:
+            load_table(cursor, metadata_table_name, attributes)
+        except Exception as e:
+            print(f"Error loading model metadata: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+    
+    # Commit the transaction if everything is successful
+    conn.commit()
+
+    # Close the cursor
+    cursor.close()
+
+    return row_id
+
+
+
