@@ -4,3 +4,5 @@ pandas
 tifffile
 tabulate
 tqdm
+dotenv
+ipykernel

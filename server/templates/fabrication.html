@@ -203,16 +203,9 @@
             const metadataItem = document.createElement('div');
             metadataItem.className = 'metadata-item';
             metadataItem.innerHTML = `
-                <input type="text" name="metadata_key[]" placeholder="Key (e.g., temperature)" required>
-                <input type="text" name="metadata_value[]" placeholder="Value (e.g., 180)" required>
-                <select name="metadata_type[]" required>
-                    <option value="">Type</option>
-                    <option value="string">Text</option>
-                    <option value="int">Integer</option>
-                    <option value="float">Decimal</option>
-                    <option value="bool">True/False</option>
-                    <option value="date">Date</option>
-                </select>
+                <input type="text" name="metadata_key[]" placeholder="Key (e.g., density)" required>
+                <input type="text" name="metadata_value[]" placeholder="Value (e.g., 1.6)" required>
+                <input type="text" name="metadata_type[]" placeholder="Type (e.g., float)" required>
                 <button type="button" class="remove-metadata" onclick="removeMetadataField(this)">Remove</button>
             `;
             metadataContainer.appendChild(metadataItem);

@@ -2,4 +2,5 @@ flask
 tifffile
 numpy
 pathlib
+psutil
 git+https://github.com/topeberti/UTvsXCT-preprocessing.git
