@@ -411,10 +411,10 @@
             <div class="form-group">
                 <label>Volume Processing:</label>
                 <div class="checkbox-group">
-                    <input type="checkbox" id="aligned" name="aligned" class="checkbox-input" value="true" checked>
+                    <input type="checkbox" id="aligned" name="aligned" class="checkbox-input" value="true">
                     <label for="aligned" class="checkbox-label">Frontwall Aligned</label>
                     
-                    <input type="checkbox" id="equalized" name="equalized" class="checkbox-input" value="true" checked>
+                    <input type="checkbox" id="equalized" name="equalized" class="checkbox-input" value="true">
                     <label for="equalized" class="checkbox-label">Equalized</label>
                 </div>
                 <div class="help-text">Select the processing methods applied to this XCT volume</div>
@@ -424,9 +424,9 @@
                 <label for="axes_order">Axes Order:</label>
                 <div class="axes-order-group">
                     <select id="axes_order_1" name="axes_order_1" required>
-                        <option value="x">X</option>
+                        <option value="x" selected>X</option>
                         <option value="y">Y</option>
-                        <option value="z" selected>Z</option>
+                        <option value="z">Z</option>
                     </select>
                     <select id="axes_order_2" name="axes_order_2" required>
                         <option value="x">X</option>
@@ -434,12 +434,12 @@
                         <option value="z">Z</option>
                     </select>
                     <select id="axes_order_3" name="axes_order_3" required>
-                        <option value="x" selected>X</option>
+                        <option value="x">X</option>
                         <option value="y">Y</option>
-                        <option value="z">Z</option>
+                        <option value="z" selected>Z</option>
                     </select>
                 </div>
-                <div class="help-text">Select the axes order (default: Z, Y, X)</div>
+                <div class="help-text">Select the axes order (default: X, Y, Z)</div>
             </div>
         </div>
         
