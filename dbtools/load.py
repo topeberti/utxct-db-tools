@@ -804,6 +804,12 @@ def load_ut_measurement(conn, file_path, measurementtype_id, height, width, dept
 
     relational_table_name = 'sample_measurements'
 
+    if sample_ids is None or len(sample_ids) == 0:
+        print(f"Error: No valid sample IDs found for the provided sample names: {sample_names}")
+        conn.rollback()
+        cursor.close()
+        return -1
+
     for sample_id in sample_ids:
 
         relational_parameters = {'sample_id': sample_id, 'measurement_id': row_id}
@@ -980,6 +986,12 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
     sample_ids = samples_data['id_sample'].values.tolist()
 
     relational_table_name = 'sample_measurements'
+
+    if sample_ids is None or len(sample_ids) == 0:
+        print(f"Error: No valid sample IDs found for the provided sample names: {sample_names}")
+        conn.rollback()
+        cursor.close()
+        return -1
 
     for sample_id in sample_ids:
         relational_parameters = {'sample_id': sample_id, 'measurement_id': row_id}
