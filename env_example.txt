@@ -6,8 +6,3 @@ DB_PASSWORD=password
 # Read-only user for LLM / automated queries (SELECT only)
 DB_CLAUDE_USER=claude
 DB_CLAUDE_PASSWORD=password
-
-GRANT SELECT, INSERT, UPDATE, DELETE
-ON ALL TABLES IN SCHEMA public
-TO "jorge.cabrejas";
-

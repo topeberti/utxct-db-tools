@@ -1,0 +1,16 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Server",
+            "type": "shell",
+            "command": "conda activate sql; cd ./server; python .\\app.py",
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
