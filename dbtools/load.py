@@ -1012,6 +1012,89 @@ def load_xct_measurement(conn, file_path, measurementtype_id, height, width, dep
 
     return row_id
 
+def load_onlypores(conn, measurement_id, onlypores_path, material_mask_path, binary_path, additional_metadata=None):
+    """
+    Load an onlypores result (pore mask, material mask and raw binary volume) into the database,
+    linked to the XCT measurement it was computed from, including its metadata.
+
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    measurement_id : int
+        ID of the XCT measurement the pores were extracted from.
+    onlypores_path : str
+        Path to the binary pore mask volume.
+    material_mask_path : str
+        Path to the binary sample/material mask volume.
+    binary_path : str
+        Path to the raw Sauvola thresholding volume.
+    additional_metadata : list, optional
+        List of dictionaries with 'key', 'value' and 'type' entries (processing parameters, results...).
+
+    Returns:
+    --------
+    -1 if an error occurs, otherwise the ID of the inserted onlypores row.
+
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    """
+    assert isinstance(measurement_id, int) and measurement_id > 0, "Measurement ID must be a positive integer"
+    assert isinstance(onlypores_path, str) and onlypores_path, "Onlypores path must be a non-empty string"
+    assert isinstance(material_mask_path, str) and material_mask_path, "Material mask path must be a non-empty string"
+    assert isinstance(binary_path, str) and binary_path, "Binary path must be a non-empty string"
+
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
+
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+
+    parameters = {
+        'measurement_id': measurement_id,
+        'onlypores_path': onlypores_path,
+        'material_mask_path': material_mask_path,
+        'binary_path': binary_path
+    }
+
+    table_name = 'onlypores'
+    try:
+        row_id = load_table(cursor, table_name, parameters)
+    except Exception as e:
+        print(f"Error loading onlypores: {e}")
+        conn.rollback()
+        cursor.close()
+        return -1
+
+    print(f"Onlypores from '{onlypores_path}' loaded with ID: {row_id}")
+
+    metadata_table_name = 'onlypores_metadata'
+
+    for item in (additional_metadata or []):
+        attributes = {
+            'onlypores_id': row_id,
+            'key': item['key'],
+            'value': item['value'],
+            'type': item['type']
+        }
+        try:
+            load_table(cursor, metadata_table_name, attributes)
+        except Exception as e:
+            print(f"Error loading onlypores metadata: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+
+    conn.commit()
+    cursor.close()
+
+    return row_id
+
 def load_registration(conn,transformation_matrix, reference_file_path, registered_file_path, registration_type, axes, additional_metadata=None):
     """
     Load a registration into the database, including its metadata.
@@ -1333,6 +1416,196 @@ def load_dataset(conn,datasettype_id, file_path, rows, patch_size, targets, reco
     return row_id
 
 
+def load_parent_dataset(conn, datasettype_id, file_path, rows, patch_size, targets,
+                         reconstruction_shape, registration_ids, child_dataset_paths,
+                         description=None, additional_metadata=None):
+    """
+    Load a parent dataset into the database and link it to its child datasets.
+
+    This behaves exactly like load_dataset (same table, same metadata), but
+    additionally records, in the 'dataset_relations' table, that this new
+    dataset is the parent of each dataset in child_dataset_paths. Child
+    datasets must already exist in the 'datasets' table.
+
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    datasettype_id : int
+        ID of the dataset type.
+    file_path : str
+        The path to the parent dataset file.
+    rows : int
+        Number of rows in the parent dataset.
+    patch_size : str
+        Patch size of the parent dataset.
+    targets : list
+        List of targets for the parent dataset.
+    reconstruction_shape : tuple
+        Shape to see the dataset as an image.
+    registration_ids : list
+        List of IDs of the registrations associated with this dataset.
+    child_dataset_paths : list
+        List of file_path values of the already-loaded child datasets that
+        this parent dataset contains.
+    description : str, optional
+        Dataset description.
+
+    Returns:
+    --------
+    -1 if an error occurs, otherwise the ID of the inserted parent dataset.
+
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    ValueError
+        If any path in child_dataset_paths does not match an existing dataset.
+    """
+    # Validate input parameters (same as load_dataset)
+    assert isinstance(datasettype_id, int) and datasettype_id > 0, "Dataset type ID must be a positive integer"
+    assert isinstance(file_path, str) and file_path, "File path must be a non-empty string"
+    assert isinstance(rows, int) and rows > 0, "Rows must be a positive integer"
+    assert isinstance(patch_size, str), "Patch size must be a string"
+    assert isinstance(targets, list) and all(isinstance(target, str) for target in targets), "Targets must be a list of strings"
+    assert isinstance(reconstruction_shape, tuple), "Reconstruction shape must be a tuple"
+    assert all(isinstance(dim, int) for dim in reconstruction_shape), "All dimensions in reconstruction shape must be integers"
+    assert isinstance(registration_ids, list) and all(isinstance(reg_id, int) for reg_id in registration_ids), "Registration IDs must be a list of integers"
+
+    # Validate child_dataset_paths
+    assert isinstance(child_dataset_paths, list) and len(child_dataset_paths) > 0, "child_dataset_paths must be a non-empty list"
+    assert all(isinstance(path, str) and path for path in child_dataset_paths), "child_dataset_paths must contain non-empty strings"
+    assert file_path not in child_dataset_paths, "The parent dataset cannot be listed as one of its own children"
+
+    # Validate additional_metadata if provided
+    if additional_metadata is not None:
+        assert isinstance(additional_metadata, list), "additional_metadata must be a list"
+        for item in additional_metadata:
+            assert isinstance(item, dict), "Each item in additional_metadata must be a dictionary"
+            assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in additional_metadata must contain 'key', 'value', and 'type' keys"
+
+    # Validate description if provided
+    if description is not None:
+        assert isinstance(description, str), "Description must be a string"
+
+    # Create a cursor object and start a transaction
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+
+    # Resolve child dataset paths to IDs before writing anything, so a typo
+    # in a path fails fast instead of leaving a half-created parent behind.
+    cursor.execute("SELECT id, file_path FROM datasets WHERE file_path = ANY(%s)", (list(child_dataset_paths),))
+    found_ids = {found_path: found_id for found_id, found_path in cursor.fetchall()}
+    missing_paths = [path for path in child_dataset_paths if path not in found_ids]
+    if missing_paths:
+        conn.rollback()
+        cursor.close()
+        raise ValueError(f"No matching dataset found for child_dataset_paths: {missing_paths}")
+
+    # Create the parameters dictionary for dataset insertion
+    parameters = {
+        'file_path': file_path,
+        'datasettype_id': datasettype_id
+    }
+
+    # Add description if provided
+    if description is not None:
+        parameters['description'] = description
+
+    # Load the parent dataset into the database
+    table_name = 'datasets'
+    try:
+        row_id = load_table(cursor, table_name, parameters)
+    except Exception as e:
+        print(f"Error loading parent dataset: {e}")
+        conn.rollback()
+        cursor.close()
+        return -1
+
+    print(f"Parent dataset from '{file_path}' loaded with ID: {row_id}")
+
+    # Create the metadata parameters dictionary
+    metadata_parameters = [
+        {table_name[:-1] + '_id': row_id, 'key': 'rows', 'value': str(rows), 'type': 'cardinal'},
+        {table_name[:-1] + '_id': row_id, 'key': 'patch_size', 'value': patch_size, 'type': 'pixels'},
+        {table_name[:-1] + '_id': row_id, 'key': 'reconstruction_shape', 'value': str(reconstruction_shape), 'type': 'pixels tuple'}
+    ]
+
+    # Add additional metadata if provided
+    if additional_metadata is not None:
+        for item in additional_metadata:
+            if item['type'] in ['Bool','Boolean','boolean']:
+                item['type'] = 'bool'
+            metadata_parameters.append({
+                table_name[:-1] + '_id': row_id,
+                'key': item['key'],
+                'value': item['value'],
+                'type': item['type']
+            })
+
+    for target in targets:
+        metadata_parameters.append({
+            table_name[:-1] + '_id': row_id,
+            'key': 'target',
+            'value': target,
+            'type': 'nominal'
+        })
+
+    metadata_table_name = 'dataset_metadata'
+
+    # Insert each metadata entry
+    for attributes in metadata_parameters:
+        try:
+            load_table(cursor, metadata_table_name, attributes)
+        except Exception as e:
+            print(f"Error loading dataset metadata: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+
+    # Define the name of the relational table that connects datasets and registrations
+    relational_table_name = 'dataset_registrations'
+
+    for registration_id in registration_ids:
+
+        # Prepare parameters for the relationship entry
+        relational_parameters = {'dataset_id': row_id, 'registration_id': registration_id}
+
+        try:
+            # Insert the relationship into the relational table
+            load_table(cursor, relational_table_name, relational_parameters)
+        except Exception as e:
+            print(f"Error loading dataset-registration relationship: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+
+    # Define the name of the relational table that connects parent and child datasets
+    parent_relational_table_name = 'dataset_relations'
+
+    for child_path in child_dataset_paths:
+
+        # Prepare parameters for the parent-child relationship entry
+        parent_relational_parameters = {'parent_dataset_id': row_id, 'child_dataset_id': found_ids[child_path]}
+
+        try:
+            # Insert the relationship into the relational table
+            load_table(cursor, parent_relational_table_name, parent_relational_parameters)
+        except Exception as e:
+            print(f"Error loading parent-child dataset relationship: {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+
+    # Commit the transaction if everything is successful
+    conn.commit()
+
+    # Close the cursor
+    cursor.close()
+
+    return row_id
+
+
 def load_experiment(conn, folder_path, description, author, dataset_paths, additional_metadata=None):
     """
     Load an experiment into the database, including its metadata.
@@ -1479,6 +1752,87 @@ def load_experiment(conn, folder_path, description, author, dataset_paths, addit
     cursor.close()
 
     return row_id
+
+
+def add_experiment_metadata(conn, folder_path, metadata):
+    """
+    Add metadata entries to an already-loaded experiment.
+
+    Looks up the experiment by its folder_path (raises if not found) and
+    writes each entry into 'experiment_metadata'. Because experiment_metadata
+    has a UNIQUE(experiment_id, key) constraint, an entry whose key already
+    exists for this experiment has its value/type overwritten (upsert)
+    instead of raising a duplicate-key error.
+
+    Parameters:
+    -----------
+    conn : psycopg2.connection
+        Database connection object.
+    folder_path : str
+        The folder_path of an experiment already present in the 'experiments'
+        table.
+    metadata : list
+        List of dictionaries containing metadata to add.
+        Each dictionary should have 'key', 'value', and 'type' keys.
+        Example: [{'key': 'notes', 'value': 'reran with new seed', 'type': 'string'},
+                  {'key': 'epochs', 'value': 50, 'type': 'integer'}]
+
+    Returns:
+    --------
+    int
+        The experiment_id the metadata was attached to, or -1 if an error occurs.
+
+    Raises:
+    -------
+    AssertionError
+        If any of the input parameters don't meet the expected types/values.
+    ValueError
+        If no experiment matches folder_path.
+    """
+    # Validate input parameters
+    assert isinstance(folder_path, str) and folder_path, "Folder path must be a non-empty string"
+    assert isinstance(metadata, list) and len(metadata) > 0, "metadata must be a non-empty list"
+    for item in metadata:
+        assert isinstance(item, dict), "Each item in metadata must be a dictionary"
+        assert all(k in item for k in ['key', 'value', 'type']), "Each dictionary in metadata must contain 'key', 'value', and 'type' keys"
+
+    # Look up the experiment_id from the experiment folder path (raises ValueError if not found)
+    experiment_id = int(dbt.get_id('experiments', ['folder_path_experiment'], [folder_path]))
+
+    # Create a cursor object and start a transaction
+    cursor = conn.cursor()
+    conn.autocommit = False  # Start transaction
+
+    metadata_table_name = 'experiment_metadata'
+
+    # Upsert each metadata entry
+    for item in metadata:
+        if item['type'] in ['Bool', 'Boolean', 'boolean']:
+            item['type'] = 'bool'
+
+        sql = f"""
+            INSERT INTO {metadata_table_name} (experiment_id, key, value, type)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (experiment_id, key) DO UPDATE SET value = EXCLUDED.value, type = EXCLUDED.type
+        """
+
+        try:
+            cursor.execute(sql, (experiment_id, item['key'], item['value'], item['type']))
+        except Exception as e:
+            print(f"Error adding metadata '{item['key']}': {e}")
+            conn.rollback()
+            cursor.close()
+            return -1
+
+    print(f"Added {len(metadata)} metadata entries to experiment ID {experiment_id}")
+
+    # Commit the transaction if everything is successful
+    conn.commit()
+
+    # Close the cursor
+    cursor.close()
+
+    return experiment_id
 
 
 def load_model(conn, experiment_folder_path, model_folder_path, architecture, description=None, parameters=None, trainable_parameters=None, computed_metrics=None, additional_metadata=None):
