@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 17.4
--- Dumped by pg_dump version 17.4
+\restrict GKAu0OOg2fgEA0zY9yvdbRZYZLR91o6rlY6YQzpkNBVhWEDjPPJ16QhIZfSoW8E
 
--- Started on 2026-01-29 09:49:39
+-- Dumped from database version 17.11 (Ubuntu 17.11-1.pgdg24.04+2)
+-- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg24.04+2)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -20,7 +20,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 5 (class 2615 OID 35320)
 -- Name: meta; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -30,26 +29,22 @@ CREATE SCHEMA meta;
 ALTER SCHEMA meta OWNER TO postgres;
 
 --
--- TOC entry 6 (class 2615 OID 35321)
--- Name: pgagent; Type: SCHEMA; Schema: -; Owner: alberto.vicente
+-- Name: pgagent; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
 CREATE SCHEMA pgagent;
 
 
-ALTER SCHEMA pgagent OWNER TO "alberto.vicente";
+ALTER SCHEMA pgagent OWNER TO postgres;
 
 --
--- TOC entry 5142 (class 0 OID 0)
--- Dependencies: 6
--- Name: SCHEMA pgagent; Type: COMMENT; Schema: -; Owner: alberto.vicente
+-- Name: SCHEMA pgagent; Type: COMMENT; Schema: -; Owner: postgres
 --
 
 COMMENT ON SCHEMA pgagent IS 'pgAgent system tables';
 
 
 --
--- TOC entry 896 (class 1247 OID 35323)
 -- Name: data_type_enum; Type: TYPE; Schema: public; Owner: postgres
 --
 
@@ -64,7 +59,6 @@ CREATE TYPE public.data_type_enum AS ENUM (
 ALTER TYPE public.data_type_enum OWNER TO postgres;
 
 --
--- TOC entry 899 (class 1247 OID 35332)
 -- Name: file_type_enum; Type: TYPE; Schema: public; Owner: postgres
 --
 
@@ -78,12 +72,66 @@ CREATE TYPE public.file_type_enum AS ENUM (
 
 ALTER TYPE public.file_type_enum OWNER TO postgres;
 
+--
+-- Name: studydirection; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.studydirection AS ENUM (
+    'NOT_SET',
+    'MINIMIZE',
+    'MAXIMIZE'
+);
+
+
+ALTER TYPE public.studydirection OWNER TO postgres;
+
+--
+-- Name: trialintermediatevaluetype; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.trialintermediatevaluetype AS ENUM (
+    'FINITE',
+    'INF_POS',
+    'INF_NEG',
+    'NAN'
+);
+
+
+ALTER TYPE public.trialintermediatevaluetype OWNER TO postgres;
+
+--
+-- Name: trialstate; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.trialstate AS ENUM (
+    'RUNNING',
+    'COMPLETE',
+    'PRUNED',
+    'FAIL',
+    'WAITING'
+);
+
+
+ALTER TYPE public.trialstate OWNER TO postgres;
+
+--
+-- Name: trialvaluetype; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.trialvaluetype AS ENUM (
+    'FINITE',
+    'INF_POS',
+    'INF_NEG'
+);
+
+
+ALTER TYPE public.trialvaluetype OWNER TO postgres;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- TOC entry 219 (class 1259 OID 35341)
 -- Name: migrations; Type: TABLE; Schema: meta; Owner: postgres
 --
 
@@ -97,7 +145,6 @@ CREATE TABLE meta.migrations (
 ALTER TABLE meta.migrations OWNER TO postgres;
 
 --
--- TOC entry 221 (class 1259 OID 35350)
 -- Name: dataset_metadata; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -114,7 +161,6 @@ CREATE TABLE public.dataset_metadata (
 ALTER TABLE public.dataset_metadata OWNER TO postgres;
 
 --
--- TOC entry 222 (class 1259 OID 35355)
 -- Name: dataset_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -129,7 +175,6 @@ ALTER TABLE public.dataset_metadata ALTER COLUMN id ADD GENERATED ALWAYS AS IDEN
 
 
 --
--- TOC entry 220 (class 1259 OID 35347)
 -- Name: dataset_registrations; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -143,7 +188,34 @@ CREATE TABLE public.dataset_registrations (
 ALTER TABLE public.dataset_registrations OWNER TO postgres;
 
 --
--- TOC entry 223 (class 1259 OID 35356)
+-- Name: dataset_relations; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.dataset_relations (
+    id bigint NOT NULL,
+    parent_dataset_id bigint NOT NULL,
+    child_dataset_id bigint NOT NULL,
+    CONSTRAINT dataset_relations_no_self_reference CHECK ((parent_dataset_id <> child_dataset_id))
+);
+
+
+ALTER TABLE public.dataset_relations OWNER TO postgres;
+
+--
+-- Name: dataset_relations_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.dataset_relations ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.dataset_relations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: datasetmeasurements_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -158,7 +230,6 @@ ALTER TABLE public.dataset_registrations ALTER COLUMN id ADD GENERATED ALWAYS AS
 
 
 --
--- TOC entry 224 (class 1259 OID 35357)
 -- Name: datasets; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -173,7 +244,6 @@ CREATE TABLE public.datasets (
 ALTER TABLE public.datasets OWNER TO postgres;
 
 --
--- TOC entry 225 (class 1259 OID 35362)
 -- Name: datasets_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -188,7 +258,6 @@ ALTER TABLE public.datasets ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- TOC entry 256 (class 1259 OID 43176)
 -- Name: datasettypes; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -201,7 +270,6 @@ CREATE TABLE public.datasettypes (
 ALTER TABLE public.datasettypes OWNER TO postgres;
 
 --
--- TOC entry 257 (class 1259 OID 43190)
 -- Name: datasettypes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -216,7 +284,6 @@ ALTER TABLE public.datasettypes ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDEN
 
 
 --
--- TOC entry 267 (class 1259 OID 43278)
 -- Name: experiment_datasets; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -230,7 +297,6 @@ CREATE TABLE public.experiment_datasets (
 ALTER TABLE public.experiment_datasets OWNER TO postgres;
 
 --
--- TOC entry 266 (class 1259 OID 43277)
 -- Name: experiment_datasets_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -246,8 +312,6 @@ CREATE SEQUENCE public.experiment_datasets_id_seq
 ALTER SEQUENCE public.experiment_datasets_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5147 (class 0 OID 0)
--- Dependencies: 266
 -- Name: experiment_datasets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -255,7 +319,6 @@ ALTER SEQUENCE public.experiment_datasets_id_seq OWNED BY public.experiment_data
 
 
 --
--- TOC entry 261 (class 1259 OID 43215)
 -- Name: experiment_metadata; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -272,7 +335,6 @@ CREATE TABLE public.experiment_metadata (
 ALTER TABLE public.experiment_metadata OWNER TO postgres;
 
 --
--- TOC entry 260 (class 1259 OID 43214)
 -- Name: experiment_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -288,8 +350,6 @@ CREATE SEQUENCE public.experiment_metadata_id_seq
 ALTER SEQUENCE public.experiment_metadata_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5148 (class 0 OID 0)
--- Dependencies: 260
 -- Name: experiment_metadata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -297,7 +357,6 @@ ALTER SEQUENCE public.experiment_metadata_id_seq OWNED BY public.experiment_meta
 
 
 --
--- TOC entry 259 (class 1259 OID 43204)
 -- Name: experiments; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -311,7 +370,6 @@ CREATE TABLE public.experiments (
 ALTER TABLE public.experiments OWNER TO postgres;
 
 --
--- TOC entry 258 (class 1259 OID 43203)
 -- Name: experiments_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -327,8 +385,6 @@ CREATE SEQUENCE public.experiments_id_seq
 ALTER SEQUENCE public.experiments_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5149 (class 0 OID 0)
--- Dependencies: 258
 -- Name: experiments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -336,7 +392,6 @@ ALTER SEQUENCE public.experiments_id_seq OWNED BY public.experiments.id;
 
 
 --
--- TOC entry 226 (class 1259 OID 35363)
 -- Name: fabrications; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -350,8 +405,6 @@ CREATE TABLE public.fabrications (
 ALTER TABLE public.fabrications OWNER TO postgres;
 
 --
--- TOC entry 5150 (class 0 OID 0)
--- Dependencies: 226
 -- Name: TABLE fabrications; Type: COMMENT; Schema: public; Owner: postgres
 --
 
@@ -359,7 +412,6 @@ COMMENT ON TABLE public.fabrications IS 'Stores information about distinct fabri
 
 
 --
--- TOC entry 227 (class 1259 OID 35368)
 -- Name: fabrication_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -375,8 +427,6 @@ CREATE SEQUENCE public.fabrication_id_seq
 ALTER SEQUENCE public.fabrication_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5151 (class 0 OID 0)
--- Dependencies: 227
 -- Name: fabrication_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -384,7 +434,6 @@ ALTER SEQUENCE public.fabrication_id_seq OWNED BY public.fabrications.id;
 
 
 --
--- TOC entry 228 (class 1259 OID 35369)
 -- Name: fabrication_metadata; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -401,8 +450,6 @@ CREATE TABLE public.fabrication_metadata (
 ALTER TABLE public.fabrication_metadata OWNER TO postgres;
 
 --
--- TOC entry 5152 (class 0 OID 0)
--- Dependencies: 228
 -- Name: TABLE fabrication_metadata; Type: COMMENT; Schema: public; Owner: postgres
 --
 
@@ -410,7 +457,6 @@ COMMENT ON TABLE public.fabrication_metadata IS 'Stores flexible key-value metad
 
 
 --
--- TOC entry 229 (class 1259 OID 35374)
 -- Name: fabrication_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -426,8 +472,6 @@ CREATE SEQUENCE public.fabrication_metadata_id_seq
 ALTER SEQUENCE public.fabrication_metadata_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5153 (class 0 OID 0)
--- Dependencies: 229
 -- Name: fabrication_metadata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -435,7 +479,6 @@ ALTER SEQUENCE public.fabrication_metadata_id_seq OWNED BY public.fabrication_me
 
 
 --
--- TOC entry 230 (class 1259 OID 35375)
 -- Name: registrations; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -451,7 +494,6 @@ CREATE TABLE public.registrations (
 ALTER TABLE public.registrations OWNER TO postgres;
 
 --
--- TOC entry 231 (class 1259 OID 35380)
 -- Name: file_registrations_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -466,7 +508,6 @@ ALTER TABLE public.registrations ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTIT
 
 
 --
--- TOC entry 232 (class 1259 OID 35381)
 -- Name: material_metadata; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -483,7 +524,6 @@ CREATE TABLE public.material_metadata (
 ALTER TABLE public.material_metadata OWNER TO postgres;
 
 --
--- TOC entry 233 (class 1259 OID 35386)
 -- Name: material_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -498,7 +538,6 @@ ALTER TABLE public.material_metadata ALTER COLUMN id ADD GENERATED ALWAYS AS IDE
 
 
 --
--- TOC entry 234 (class 1259 OID 35387)
 -- Name: materials; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -511,7 +550,6 @@ CREATE TABLE public.materials (
 ALTER TABLE public.materials OWNER TO postgres;
 
 --
--- TOC entry 235 (class 1259 OID 35392)
 -- Name: materials_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -526,7 +564,6 @@ ALTER TABLE public.materials ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- TOC entry 236 (class 1259 OID 35393)
 -- Name: measurements; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -541,7 +578,6 @@ CREATE TABLE public.measurements (
 ALTER TABLE public.measurements OWNER TO postgres;
 
 --
--- TOC entry 237 (class 1259 OID 35398)
 -- Name: measurement_files_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -556,7 +592,6 @@ ALTER TABLE public.measurements ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY
 
 
 --
--- TOC entry 238 (class 1259 OID 35399)
 -- Name: measurement_metadata; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -573,7 +608,6 @@ CREATE TABLE public.measurement_metadata (
 ALTER TABLE public.measurement_metadata OWNER TO postgres;
 
 --
--- TOC entry 239 (class 1259 OID 35404)
 -- Name: measurement_files_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -588,7 +622,6 @@ ALTER TABLE public.measurement_metadata ALTER COLUMN id ADD GENERATED ALWAYS AS 
 
 
 --
--- TOC entry 240 (class 1259 OID 35405)
 -- Name: registration_metadata; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -605,8 +638,6 @@ CREATE TABLE public.registration_metadata (
 ALTER TABLE public.registration_metadata OWNER TO postgres;
 
 --
--- TOC entry 5159 (class 0 OID 0)
--- Dependencies: 240
 -- Name: TABLE registration_metadata; Type: COMMENT; Schema: public; Owner: postgres
 --
 
@@ -614,7 +645,6 @@ COMMENT ON TABLE public.registration_metadata IS 'Stores flexible key-value meta
 
 
 --
--- TOC entry 241 (class 1259 OID 35410)
 -- Name: measurement_registration_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -630,8 +660,6 @@ CREATE SEQUENCE public.measurement_registration_metadata_id_seq
 ALTER SEQUENCE public.measurement_registration_metadata_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5160 (class 0 OID 0)
--- Dependencies: 241
 -- Name: measurement_registration_metadata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -639,7 +667,6 @@ ALTER SEQUENCE public.measurement_registration_metadata_id_seq OWNED BY public.r
 
 
 --
--- TOC entry 242 (class 1259 OID 35411)
 -- Name: measurementtype_metadata; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -656,7 +683,6 @@ CREATE TABLE public.measurementtype_metadata (
 ALTER TABLE public.measurementtype_metadata OWNER TO postgres;
 
 --
--- TOC entry 243 (class 1259 OID 35416)
 -- Name: measurement_type_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -671,7 +697,6 @@ ALTER TABLE public.measurementtype_metadata ALTER COLUMN id ADD GENERATED ALWAYS
 
 
 --
--- TOC entry 244 (class 1259 OID 35417)
 -- Name: measurementtypes; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -685,7 +710,6 @@ CREATE TABLE public.measurementtypes (
 ALTER TABLE public.measurementtypes OWNER TO postgres;
 
 --
--- TOC entry 245 (class 1259 OID 35422)
 -- Name: measurementtypes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -700,89 +724,65 @@ ALTER TABLE public.measurementtypes ALTER COLUMN id ADD GENERATED ALWAYS AS IDEN
 
 
 --
--- TOC entry 265 (class 1259 OID 43262)
--- Name: model_metadata; Type: TABLE; Schema: public; Owner: postgres
+-- Name: onlypores; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.model_metadata (
-    id integer NOT NULL,
-    model_id integer NOT NULL,
-    key character varying(255) NOT NULL,
+CREATE TABLE public.onlypores (
+    id bigint NOT NULL,
+    measurement_id bigint NOT NULL,
+    onlypores_path text NOT NULL,
+    material_mask_path text NOT NULL,
+    binary_path text NOT NULL
+);
+
+
+ALTER TABLE public.onlypores OWNER TO postgres;
+
+--
+-- Name: onlypores_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.onlypores ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.onlypores_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: onlypores_metadata; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.onlypores_metadata (
+    id bigint NOT NULL,
+    onlypores_id bigint NOT NULL,
+    key text NOT NULL,
     value text,
-    type character varying(100),
-    extra_info jsonb
+    type text,
+    extra_info json
 );
 
 
-ALTER TABLE public.model_metadata OWNER TO postgres;
+ALTER TABLE public.onlypores_metadata OWNER TO postgres;
 
 --
--- TOC entry 264 (class 1259 OID 43261)
--- Name: model_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: onlypores_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
-CREATE SEQUENCE public.model_metadata_id_seq
-    AS integer
+ALTER TABLE public.onlypores_metadata ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.onlypores_metadata_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.model_metadata_id_seq OWNER TO postgres;
-
---
--- TOC entry 5163 (class 0 OID 0)
--- Dependencies: 264
--- Name: model_metadata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.model_metadata_id_seq OWNED BY public.model_metadata.id;
-
-
---
--- TOC entry 263 (class 1259 OID 43246)
--- Name: models; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.models (
-    id integer NOT NULL,
-    experiment_id integer NOT NULL,
-    model_folder_path text NOT NULL,
-    description text
+    CACHE 1
 );
 
 
-ALTER TABLE public.models OWNER TO postgres;
-
 --
--- TOC entry 262 (class 1259 OID 43245)
--- Name: models_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.models_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.models_id_seq OWNER TO postgres;
-
---
--- TOC entry 5164 (class 0 OID 0)
--- Dependencies: 262
--- Name: models_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.models_id_seq OWNED BY public.models.id;
-
-
---
--- TOC entry 246 (class 1259 OID 35423)
 -- Name: panels; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -798,8 +798,6 @@ CREATE TABLE public.panels (
 ALTER TABLE public.panels OWNER TO postgres;
 
 --
--- TOC entry 5165 (class 0 OID 0)
--- Dependencies: 246
 -- Name: COLUMN panels.fabrication_id; Type: COMMENT; Schema: public; Owner: postgres
 --
 
@@ -807,7 +805,6 @@ COMMENT ON COLUMN public.panels.fabrication_id IS 'Foreign key referencing the f
 
 
 --
--- TOC entry 247 (class 1259 OID 35428)
 -- Name: panel_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -822,7 +819,6 @@ ALTER TABLE public.panels ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- TOC entry 248 (class 1259 OID 35429)
 -- Name: panel_metadata; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -839,7 +835,6 @@ CREATE TABLE public.panel_metadata (
 ALTER TABLE public.panel_metadata OWNER TO postgres;
 
 --
--- TOC entry 249 (class 1259 OID 35434)
 -- Name: panel_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -854,7 +849,6 @@ ALTER TABLE public.panel_metadata ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 
 
 --
--- TOC entry 250 (class 1259 OID 35435)
 -- Name: sample_measurements; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -868,7 +862,6 @@ CREATE TABLE public.sample_measurements (
 ALTER TABLE public.sample_measurements OWNER TO postgres;
 
 --
--- TOC entry 251 (class 1259 OID 35438)
 -- Name: sample_measurements_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -883,7 +876,6 @@ ALTER TABLE public.sample_measurements ALTER COLUMN id ADD GENERATED ALWAYS AS I
 
 
 --
--- TOC entry 252 (class 1259 OID 35439)
 -- Name: sample_metadata; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -900,7 +892,6 @@ CREATE TABLE public.sample_metadata (
 ALTER TABLE public.sample_metadata OWNER TO postgres;
 
 --
--- TOC entry 253 (class 1259 OID 35444)
 -- Name: sample_metadata_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -915,7 +906,6 @@ ALTER TABLE public.sample_metadata ALTER COLUMN id ADD GENERATED ALWAYS AS IDENT
 
 
 --
--- TOC entry 254 (class 1259 OID 35445)
 -- Name: samples; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -930,7 +920,6 @@ CREATE TABLE public.samples (
 ALTER TABLE public.samples OWNER TO postgres;
 
 --
--- TOC entry 255 (class 1259 OID 35450)
 -- Name: samples_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -945,7 +934,6 @@ ALTER TABLE public.samples ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- TOC entry 4878 (class 2604 OID 43281)
 -- Name: experiment_datasets id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -953,7 +941,6 @@ ALTER TABLE ONLY public.experiment_datasets ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
--- TOC entry 4875 (class 2604 OID 43218)
 -- Name: experiment_metadata id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -961,7 +948,6 @@ ALTER TABLE ONLY public.experiment_metadata ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
--- TOC entry 4874 (class 2604 OID 43207)
 -- Name: experiments id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -969,7 +955,6 @@ ALTER TABLE ONLY public.experiments ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
--- TOC entry 4872 (class 2604 OID 35452)
 -- Name: fabrication_metadata id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -977,7 +962,6 @@ ALTER TABLE ONLY public.fabrication_metadata ALTER COLUMN id SET DEFAULT nextval
 
 
 --
--- TOC entry 4871 (class 2604 OID 35451)
 -- Name: fabrications id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -985,23 +969,6 @@ ALTER TABLE ONLY public.fabrications ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
--- TOC entry 4877 (class 2604 OID 43265)
--- Name: model_metadata id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.model_metadata ALTER COLUMN id SET DEFAULT nextval('public.model_metadata_id_seq'::regclass);
-
-
---
--- TOC entry 4876 (class 2604 OID 43249)
--- Name: models id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.models ALTER COLUMN id SET DEFAULT nextval('public.models_id_seq'::regclass);
-
-
---
--- TOC entry 4873 (class 2604 OID 35453)
 -- Name: registration_metadata id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -1009,7 +976,6 @@ ALTER TABLE ONLY public.registration_metadata ALTER COLUMN id SET DEFAULT nextva
 
 
 --
--- TOC entry 4880 (class 2606 OID 35455)
 -- Name: migrations migrations_pkey; Type: CONSTRAINT; Schema: meta; Owner: postgres
 --
 
@@ -1018,7 +984,6 @@ ALTER TABLE ONLY meta.migrations
 
 
 --
--- TOC entry 4886 (class 2606 OID 35457)
 -- Name: dataset_metadata dataset_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1027,7 +992,22 @@ ALTER TABLE ONLY public.dataset_metadata
 
 
 --
--- TOC entry 4882 (class 2606 OID 35459)
+-- Name: dataset_relations dataset_relations_parent_child_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.dataset_relations
+    ADD CONSTRAINT dataset_relations_parent_child_key UNIQUE (parent_dataset_id, child_dataset_id);
+
+
+--
+-- Name: dataset_relations dataset_relations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.dataset_relations
+    ADD CONSTRAINT dataset_relations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: dataset_registrations datasetmeasurements_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1036,7 +1016,6 @@ ALTER TABLE ONLY public.dataset_registrations
 
 
 --
--- TOC entry 4889 (class 2606 OID 35461)
 -- Name: datasets datasets_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1045,7 +1024,6 @@ ALTER TABLE ONLY public.datasets
 
 
 --
--- TOC entry 4944 (class 2606 OID 43182)
 -- Name: datasettypes datasettypes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1054,7 +1032,6 @@ ALTER TABLE ONLY public.datasettypes
 
 
 --
--- TOC entry 4964 (class 2606 OID 43285)
 -- Name: experiment_datasets experiment_datasets_experiment_id_dataset_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1063,7 +1040,6 @@ ALTER TABLE ONLY public.experiment_datasets
 
 
 --
--- TOC entry 4966 (class 2606 OID 43283)
 -- Name: experiment_datasets experiment_datasets_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1072,7 +1048,6 @@ ALTER TABLE ONLY public.experiment_datasets
 
 
 --
--- TOC entry 4952 (class 2606 OID 43224)
 -- Name: experiment_metadata experiment_metadata_experiment_id_key_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1081,7 +1056,6 @@ ALTER TABLE ONLY public.experiment_metadata
 
 
 --
--- TOC entry 4954 (class 2606 OID 43222)
 -- Name: experiment_metadata experiment_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1090,7 +1064,6 @@ ALTER TABLE ONLY public.experiment_metadata
 
 
 --
--- TOC entry 4948 (class 2606 OID 43213)
 -- Name: experiments experiments_folder_path_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1099,7 +1072,6 @@ ALTER TABLE ONLY public.experiments
 
 
 --
--- TOC entry 4950 (class 2606 OID 43211)
 -- Name: experiments experiments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1108,7 +1080,6 @@ ALTER TABLE ONLY public.experiments
 
 
 --
--- TOC entry 4897 (class 2606 OID 35463)
 -- Name: fabrication_metadata fabrication_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1117,7 +1088,6 @@ ALTER TABLE ONLY public.fabrication_metadata
 
 
 --
--- TOC entry 4893 (class 2606 OID 35465)
 -- Name: fabrications fabrication_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1126,7 +1096,6 @@ ALTER TABLE ONLY public.fabrications
 
 
 --
--- TOC entry 4895 (class 2606 OID 35467)
 -- Name: fabrications fabrication_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1135,7 +1104,6 @@ ALTER TABLE ONLY public.fabrications
 
 
 --
--- TOC entry 4899 (class 2606 OID 35469)
 -- Name: registrations file_registrations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1144,7 +1112,6 @@ ALTER TABLE ONLY public.registrations
 
 
 --
--- TOC entry 4904 (class 2606 OID 35471)
 -- Name: material_metadata material_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1153,7 +1120,6 @@ ALTER TABLE ONLY public.material_metadata
 
 
 --
--- TOC entry 4906 (class 2606 OID 35473)
 -- Name: materials materials_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1162,7 +1128,6 @@ ALTER TABLE ONLY public.materials
 
 
 --
--- TOC entry 4910 (class 2606 OID 35475)
 -- Name: measurements measurement_files_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1171,7 +1136,6 @@ ALTER TABLE ONLY public.measurements
 
 
 --
--- TOC entry 4915 (class 2606 OID 35477)
 -- Name: measurement_metadata measurement_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1180,7 +1144,6 @@ ALTER TABLE ONLY public.measurement_metadata
 
 
 --
--- TOC entry 4917 (class 2606 OID 35479)
 -- Name: registration_metadata measurement_registration_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1189,7 +1152,6 @@ ALTER TABLE ONLY public.registration_metadata
 
 
 --
--- TOC entry 4920 (class 2606 OID 35481)
 -- Name: measurementtype_metadata measurement_type_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1198,7 +1160,6 @@ ALTER TABLE ONLY public.measurementtype_metadata
 
 
 --
--- TOC entry 4922 (class 2606 OID 35483)
 -- Name: measurementtypes measurementtypes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1207,43 +1168,30 @@ ALTER TABLE ONLY public.measurementtypes
 
 
 --
--- TOC entry 4960 (class 2606 OID 43271)
--- Name: model_metadata model_metadata_model_id_key_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: onlypores_metadata onlypores_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.model_metadata
-    ADD CONSTRAINT model_metadata_model_id_key_key UNIQUE (model_id, key);
-
-
---
--- TOC entry 4962 (class 2606 OID 43269)
--- Name: model_metadata model_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.model_metadata
-    ADD CONSTRAINT model_metadata_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.onlypores_metadata
+    ADD CONSTRAINT onlypores_metadata_pkey PRIMARY KEY (id);
 
 
 --
--- TOC entry 4956 (class 2606 OID 43255)
--- Name: models models_model_folder_path_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: onlypores onlypores_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.models
-    ADD CONSTRAINT models_model_folder_path_key UNIQUE (model_folder_path);
-
-
---
--- TOC entry 4958 (class 2606 OID 43253)
--- Name: models models_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.models
-    ADD CONSTRAINT models_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.onlypores
+    ADD CONSTRAINT onlypores_pkey PRIMARY KEY (id);
 
 
 --
--- TOC entry 4931 (class 2606 OID 35485)
+-- Name: onlypores onlypores_unique_onlypores_path; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.onlypores
+    ADD CONSTRAINT onlypores_unique_onlypores_path UNIQUE (onlypores_path);
+
+
+--
 -- Name: panel_metadata panel_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1252,7 +1200,6 @@ ALTER TABLE ONLY public.panel_metadata
 
 
 --
--- TOC entry 4926 (class 2606 OID 35487)
 -- Name: panels panel_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1261,7 +1208,6 @@ ALTER TABLE ONLY public.panels
 
 
 --
--- TOC entry 4935 (class 2606 OID 35489)
 -- Name: sample_measurements sample_measurements_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1270,7 +1216,6 @@ ALTER TABLE ONLY public.sample_measurements
 
 
 --
--- TOC entry 4938 (class 2606 OID 35491)
 -- Name: sample_metadata sample_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1279,7 +1224,6 @@ ALTER TABLE ONLY public.sample_metadata
 
 
 --
--- TOC entry 4940 (class 2606 OID 35493)
 -- Name: samples samples_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1288,7 +1232,6 @@ ALTER TABLE ONLY public.samples
 
 
 --
--- TOC entry 4891 (class 2606 OID 35495)
 -- Name: datasets unique_datasets_name; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1297,7 +1240,6 @@ ALTER TABLE ONLY public.datasets
 
 
 --
--- TOC entry 4946 (class 2606 OID 43189)
 -- Name: datasettypes unique_datasettype_description; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1306,7 +1248,6 @@ ALTER TABLE ONLY public.datasettypes
 
 
 --
--- TOC entry 4912 (class 2606 OID 35497)
 -- Name: measurements unique_file_path; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1315,7 +1256,6 @@ ALTER TABLE ONLY public.measurements
 
 
 --
--- TOC entry 4908 (class 2606 OID 35499)
 -- Name: materials unique_materials_name; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1324,7 +1264,6 @@ ALTER TABLE ONLY public.materials
 
 
 --
--- TOC entry 4924 (class 2606 OID 35501)
 -- Name: measurementtypes unique_measurementtypes_name; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1333,7 +1272,6 @@ ALTER TABLE ONLY public.measurementtypes
 
 
 --
--- TOC entry 4928 (class 2606 OID 35503)
 -- Name: panels unique_panels_name; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1342,7 +1280,6 @@ ALTER TABLE ONLY public.panels
 
 
 --
--- TOC entry 4942 (class 2606 OID 35505)
 -- Name: samples unique_samples_name; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1351,7 +1288,6 @@ ALTER TABLE ONLY public.samples
 
 
 --
--- TOC entry 4887 (class 1259 OID 35506)
 -- Name: fki_dataset_metadata_dataset_id_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1359,7 +1295,6 @@ CREATE INDEX fki_dataset_metadata_dataset_id_fkey ON public.dataset_metadata USI
 
 
 --
--- TOC entry 4883 (class 1259 OID 35507)
 -- Name: fki_datasetmeasurements_dataset_id_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1367,7 +1302,6 @@ CREATE INDEX fki_datasetmeasurements_dataset_id_fkey ON public.dataset_registrat
 
 
 --
--- TOC entry 4884 (class 1259 OID 35508)
 -- Name: fki_datasetmeasurements_measurement_file_id_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1375,7 +1309,6 @@ CREATE INDEX fki_datasetmeasurements_measurement_file_id_fkey ON public.dataset_
 
 
 --
--- TOC entry 4900 (class 1259 OID 35509)
 -- Name: fki_file_registrations_reference_file_id_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1383,7 +1316,6 @@ CREATE INDEX fki_file_registrations_reference_file_id_fkey ON public.registratio
 
 
 --
--- TOC entry 4901 (class 1259 OID 35510)
 -- Name: fki_file_registrations_registered_file_id_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1391,7 +1323,6 @@ CREATE INDEX fki_file_registrations_registered_file_id_fkey ON public.registrati
 
 
 --
--- TOC entry 4902 (class 1259 OID 35511)
 -- Name: fki_material_metadata_material_id_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1399,7 +1330,6 @@ CREATE INDEX fki_material_metadata_material_id_fkey ON public.material_metadata 
 
 
 --
--- TOC entry 4932 (class 1259 OID 35512)
 -- Name: fki_measurement_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1407,7 +1337,6 @@ CREATE INDEX fki_measurement_fkey ON public.sample_measurements USING btree (mea
 
 
 --
--- TOC entry 4913 (class 1259 OID 35513)
 -- Name: fki_measurement_metadata_measurement_id_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1415,7 +1344,6 @@ CREATE INDEX fki_measurement_metadata_measurement_id_fkey ON public.measurement_
 
 
 --
--- TOC entry 4918 (class 1259 OID 35514)
 -- Name: fki_measurement_type_metadata_measurement_type_id_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1423,7 +1351,6 @@ CREATE INDEX fki_measurement_type_metadata_measurement_type_id_fkey ON public.me
 
 
 --
--- TOC entry 4929 (class 1259 OID 35515)
 -- Name: fki_panel_metadata_panel_id_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1431,7 +1358,6 @@ CREATE INDEX fki_panel_metadata_panel_id_fkey ON public.panel_metadata USING btr
 
 
 --
--- TOC entry 4933 (class 1259 OID 35516)
 -- Name: fki_sample_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1439,7 +1365,6 @@ CREATE INDEX fki_sample_fkey ON public.sample_measurements USING btree (sample_i
 
 
 --
--- TOC entry 4936 (class 1259 OID 35517)
 -- Name: fki_sample_metadata_sample_id_fkey; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1447,7 +1372,20 @@ CREATE INDEX fki_sample_metadata_sample_id_fkey ON public.sample_metadata USING 
 
 
 --
--- TOC entry 4969 (class 2606 OID 35518)
+-- Name: onlypores_measurement_id_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX onlypores_measurement_id_idx ON public.onlypores USING btree (measurement_id);
+
+
+--
+-- Name: onlypores_metadata_onlypores_id_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX onlypores_metadata_onlypores_id_idx ON public.onlypores_metadata USING btree (onlypores_id);
+
+
+--
 -- Name: dataset_metadata dataset_metadata_dataset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1456,7 +1394,22 @@ ALTER TABLE ONLY public.dataset_metadata
 
 
 --
--- TOC entry 4967 (class 2606 OID 35523)
+-- Name: dataset_relations dataset_relations_child_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.dataset_relations
+    ADD CONSTRAINT dataset_relations_child_fkey FOREIGN KEY (child_dataset_id) REFERENCES public.datasets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: dataset_relations dataset_relations_parent_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.dataset_relations
+    ADD CONSTRAINT dataset_relations_parent_fkey FOREIGN KEY (parent_dataset_id) REFERENCES public.datasets(id) ON DELETE CASCADE;
+
+
+--
 -- Name: dataset_registrations datasetregistrations_dataset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1465,7 +1418,6 @@ ALTER TABLE ONLY public.dataset_registrations
 
 
 --
--- TOC entry 4968 (class 2606 OID 43309)
 -- Name: dataset_registrations datasetregistrations_registration_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1474,7 +1426,6 @@ ALTER TABLE ONLY public.dataset_registrations
 
 
 --
--- TOC entry 4970 (class 2606 OID 43183)
 -- Name: datasets datasets_datasettype_foreign_key; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1483,7 +1434,6 @@ ALTER TABLE ONLY public.datasets
 
 
 --
--- TOC entry 4990 (class 2606 OID 43291)
 -- Name: experiment_datasets experiment_datasets_dataset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1492,7 +1442,6 @@ ALTER TABLE ONLY public.experiment_datasets
 
 
 --
--- TOC entry 4991 (class 2606 OID 43286)
 -- Name: experiment_datasets experiment_datasets_experiment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1501,7 +1450,6 @@ ALTER TABLE ONLY public.experiment_datasets
 
 
 --
--- TOC entry 4987 (class 2606 OID 43225)
 -- Name: experiment_metadata experiment_metadata_experiment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1510,7 +1458,6 @@ ALTER TABLE ONLY public.experiment_metadata
 
 
 --
--- TOC entry 4971 (class 2606 OID 35533)
 -- Name: fabrication_metadata fabrication_metadata_fabrication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1519,7 +1466,6 @@ ALTER TABLE ONLY public.fabrication_metadata
 
 
 --
--- TOC entry 4972 (class 2606 OID 35538)
 -- Name: registrations file_registrations_reference_file_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1528,7 +1474,6 @@ ALTER TABLE ONLY public.registrations
 
 
 --
--- TOC entry 4973 (class 2606 OID 35543)
 -- Name: registrations file_registrations_registered_file_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1537,7 +1482,6 @@ ALTER TABLE ONLY public.registrations
 
 
 --
--- TOC entry 4974 (class 2606 OID 35548)
 -- Name: material_metadata material_metadata_material_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1546,7 +1490,6 @@ ALTER TABLE ONLY public.material_metadata
 
 
 --
--- TOC entry 4975 (class 2606 OID 35553)
 -- Name: measurements measurement_files_measurementtype_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1555,7 +1498,6 @@ ALTER TABLE ONLY public.measurements
 
 
 --
--- TOC entry 4976 (class 2606 OID 35558)
 -- Name: measurements measurement_files_parent_file_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1564,7 +1506,6 @@ ALTER TABLE ONLY public.measurements
 
 
 --
--- TOC entry 4977 (class 2606 OID 35563)
 -- Name: measurement_metadata measurement_metadata_measurement_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1573,7 +1514,6 @@ ALTER TABLE ONLY public.measurement_metadata
 
 
 --
--- TOC entry 4978 (class 2606 OID 35568)
 -- Name: registration_metadata measurement_registration_metad_measurement_registration_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1582,7 +1522,6 @@ ALTER TABLE ONLY public.registration_metadata
 
 
 --
--- TOC entry 4979 (class 2606 OID 35573)
 -- Name: measurementtype_metadata measurement_type_metadata_measurement_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1591,25 +1530,22 @@ ALTER TABLE ONLY public.measurementtype_metadata
 
 
 --
--- TOC entry 4989 (class 2606 OID 43272)
--- Name: model_metadata model_metadata_model_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: onlypores onlypores_measurement_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.model_metadata
-    ADD CONSTRAINT model_metadata_model_id_fkey FOREIGN KEY (model_id) REFERENCES public.models(id) ON DELETE CASCADE;
-
-
---
--- TOC entry 4988 (class 2606 OID 43256)
--- Name: models models_experiment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.models
-    ADD CONSTRAINT models_experiment_id_fkey FOREIGN KEY (experiment_id) REFERENCES public.experiments(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.onlypores
+    ADD CONSTRAINT onlypores_measurement_id_fkey FOREIGN KEY (measurement_id) REFERENCES public.measurements(id) ON DELETE CASCADE;
 
 
 --
--- TOC entry 4980 (class 2606 OID 35578)
+-- Name: onlypores_metadata onlypores_metadata_onlypores_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.onlypores_metadata
+    ADD CONSTRAINT onlypores_metadata_onlypores_id_fkey FOREIGN KEY (onlypores_id) REFERENCES public.onlypores(id) ON DELETE CASCADE;
+
+
+--
 -- Name: panels panel_material_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1618,7 +1554,6 @@ ALTER TABLE ONLY public.panels
 
 
 --
--- TOC entry 4982 (class 2606 OID 35583)
 -- Name: panel_metadata panel_metadata_panel_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1627,7 +1562,6 @@ ALTER TABLE ONLY public.panel_metadata
 
 
 --
--- TOC entry 4981 (class 2606 OID 35588)
 -- Name: panels panels_fabrication_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1636,7 +1570,6 @@ ALTER TABLE ONLY public.panels
 
 
 --
--- TOC entry 4983 (class 2606 OID 35593)
 -- Name: sample_measurements sample_measurements_measurement_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1645,7 +1578,6 @@ ALTER TABLE ONLY public.sample_measurements
 
 
 --
--- TOC entry 4984 (class 2606 OID 35598)
 -- Name: sample_measurements sample_measurements_sample_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1654,7 +1586,6 @@ ALTER TABLE ONLY public.sample_measurements
 
 
 --
--- TOC entry 4985 (class 2606 OID 35603)
 -- Name: sample_metadata sample_metadata_sample_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1663,7 +1594,6 @@ ALTER TABLE ONLY public.sample_metadata
 
 
 --
--- TOC entry 4986 (class 2606 OID 35608)
 -- Name: samples samples_panel_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1672,161 +1602,561 @@ ALTER TABLE ONLY public.samples
 
 
 --
--- TOC entry 5143 (class 0 OID 0)
--- Dependencies: 7
+-- Name: SCHEMA meta; Type: ACL; Schema: -; Owner: postgres
+--
+
+GRANT USAGE ON SCHEMA meta TO diego;
+GRANT USAGE ON SCHEMA meta TO miguel;
+
+
+--
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
 --
 
-GRANT USAGE ON SCHEMA public TO "ignacio.racano";
 GRANT ALL ON SCHEMA public TO "jorge.cabrejas";
+GRANT USAGE ON SCHEMA public TO claude;
+GRANT USAGE ON SCHEMA public TO diego;
+GRANT USAGE ON SCHEMA public TO miguel;
 
 
 --
--- TOC entry 5144 (class 0 OID 0)
--- Dependencies: 221
+-- Name: TABLE migrations; Type: ACL; Schema: meta; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE meta.migrations TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE meta.migrations TO miguel;
+
+
+--
 -- Name: TABLE dataset_metadata; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT ON TABLE public.dataset_metadata TO "ignacio.racano";
+GRANT ALL ON TABLE public.dataset_metadata TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.dataset_metadata TO "alberto.vicente";
+GRANT SELECT ON TABLE public.dataset_metadata TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.dataset_metadata TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.dataset_metadata TO miguel;
 
 
 --
--- TOC entry 5145 (class 0 OID 0)
--- Dependencies: 220
+-- Name: SEQUENCE dataset_metadata_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.dataset_metadata_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.dataset_metadata_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.dataset_metadata_id_seq TO miguel;
+
+
+--
 -- Name: TABLE dataset_registrations; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT ON TABLE public.dataset_registrations TO "ignacio.racano";
+GRANT ALL ON TABLE public.dataset_registrations TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.dataset_registrations TO "alberto.vicente";
+GRANT SELECT ON TABLE public.dataset_registrations TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.dataset_registrations TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.dataset_registrations TO miguel;
 
 
 --
--- TOC entry 5146 (class 0 OID 0)
--- Dependencies: 224
+-- Name: TABLE dataset_relations; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.dataset_relations TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.dataset_relations TO miguel;
+
+
+--
+-- Name: SEQUENCE dataset_relations_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.dataset_relations_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.dataset_relations_id_seq TO miguel;
+
+
+--
+-- Name: SEQUENCE datasetmeasurements_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.datasetmeasurements_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.datasetmeasurements_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.datasetmeasurements_id_seq TO miguel;
+
+
+--
 -- Name: TABLE datasets; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT ON TABLE public.datasets TO "ignacio.racano";
+GRANT ALL ON TABLE public.datasets TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.datasets TO "alberto.vicente";
+GRANT SELECT ON TABLE public.datasets TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.datasets TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.datasets TO miguel;
 
 
 --
--- TOC entry 5154 (class 0 OID 0)
--- Dependencies: 230
+-- Name: SEQUENCE datasets_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.datasets_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.datasets_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.datasets_id_seq TO miguel;
+
+
+--
+-- Name: TABLE datasettypes; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.datasettypes TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.datasettypes TO "alberto.vicente";
+GRANT SELECT ON TABLE public.datasettypes TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.datasettypes TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.datasettypes TO miguel;
+
+
+--
+-- Name: SEQUENCE datasettypes_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.datasettypes_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.datasettypes_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.datasettypes_id_seq TO miguel;
+
+
+--
+-- Name: TABLE experiment_datasets; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.experiment_datasets TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.experiment_datasets TO "alberto.vicente";
+GRANT SELECT ON TABLE public.experiment_datasets TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.experiment_datasets TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.experiment_datasets TO miguel;
+
+
+--
+-- Name: SEQUENCE experiment_datasets_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.experiment_datasets_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.experiment_datasets_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.experiment_datasets_id_seq TO miguel;
+
+
+--
+-- Name: TABLE experiment_metadata; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.experiment_metadata TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.experiment_metadata TO "alberto.vicente";
+GRANT SELECT ON TABLE public.experiment_metadata TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.experiment_metadata TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.experiment_metadata TO miguel;
+
+
+--
+-- Name: SEQUENCE experiment_metadata_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.experiment_metadata_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.experiment_metadata_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.experiment_metadata_id_seq TO miguel;
+
+
+--
+-- Name: TABLE experiments; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.experiments TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.experiments TO "alberto.vicente";
+GRANT SELECT ON TABLE public.experiments TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.experiments TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.experiments TO miguel;
+
+
+--
+-- Name: SEQUENCE experiments_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.experiments_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.experiments_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.experiments_id_seq TO miguel;
+
+
+--
+-- Name: TABLE fabrications; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.fabrications TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.fabrications TO "alberto.vicente";
+GRANT SELECT ON TABLE public.fabrications TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fabrications TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fabrications TO miguel;
+
+
+--
+-- Name: SEQUENCE fabrication_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.fabrication_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.fabrication_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.fabrication_id_seq TO miguel;
+
+
+--
+-- Name: TABLE fabrication_metadata; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.fabrication_metadata TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.fabrication_metadata TO "alberto.vicente";
+GRANT SELECT ON TABLE public.fabrication_metadata TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fabrication_metadata TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fabrication_metadata TO miguel;
+
+
+--
+-- Name: SEQUENCE fabrication_metadata_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.fabrication_metadata_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.fabrication_metadata_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.fabrication_metadata_id_seq TO miguel;
+
+
+--
 -- Name: TABLE registrations; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.registrations TO "ignacio.racano";
+GRANT ALL ON TABLE public.registrations TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.registrations TO "alberto.vicente";
+GRANT SELECT ON TABLE public.registrations TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.registrations TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.registrations TO miguel;
 
 
 --
--- TOC entry 5155 (class 0 OID 0)
--- Dependencies: 232
+-- Name: SEQUENCE file_registrations_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.file_registrations_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.file_registrations_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.file_registrations_id_seq TO miguel;
+
+
+--
 -- Name: TABLE material_metadata; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.material_metadata TO "ignacio.racano";
+GRANT ALL ON TABLE public.material_metadata TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.material_metadata TO "alberto.vicente";
+GRANT SELECT ON TABLE public.material_metadata TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.material_metadata TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.material_metadata TO miguel;
 
 
 --
--- TOC entry 5156 (class 0 OID 0)
--- Dependencies: 234
+-- Name: SEQUENCE material_metadata_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.material_metadata_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.material_metadata_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.material_metadata_id_seq TO miguel;
+
+
+--
 -- Name: TABLE materials; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.materials TO "ignacio.racano";
+GRANT ALL ON TABLE public.materials TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.materials TO "alberto.vicente";
+GRANT SELECT ON TABLE public.materials TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.materials TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.materials TO miguel;
 
 
 --
--- TOC entry 5157 (class 0 OID 0)
--- Dependencies: 236
+-- Name: SEQUENCE materials_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.materials_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.materials_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.materials_id_seq TO miguel;
+
+
+--
 -- Name: TABLE measurements; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurements TO "ignacio.racano";
+GRANT ALL ON TABLE public.measurements TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.measurements TO "alberto.vicente";
+GRANT SELECT ON TABLE public.measurements TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurements TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurements TO miguel;
 
 
 --
--- TOC entry 5158 (class 0 OID 0)
--- Dependencies: 238
+-- Name: SEQUENCE measurement_files_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.measurement_files_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.measurement_files_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.measurement_files_id_seq TO miguel;
+
+
+--
 -- Name: TABLE measurement_metadata; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurement_metadata TO "ignacio.racano";
+GRANT ALL ON TABLE public.measurement_metadata TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.measurement_metadata TO "alberto.vicente";
+GRANT SELECT ON TABLE public.measurement_metadata TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurement_metadata TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurement_metadata TO miguel;
 
 
 --
--- TOC entry 5161 (class 0 OID 0)
--- Dependencies: 242
+-- Name: SEQUENCE measurement_files_metadata_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.measurement_files_metadata_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.measurement_files_metadata_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.measurement_files_metadata_id_seq TO miguel;
+
+
+--
+-- Name: TABLE registration_metadata; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.registration_metadata TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.registration_metadata TO "alberto.vicente";
+GRANT SELECT ON TABLE public.registration_metadata TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.registration_metadata TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.registration_metadata TO miguel;
+
+
+--
+-- Name: SEQUENCE measurement_registration_metadata_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.measurement_registration_metadata_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.measurement_registration_metadata_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.measurement_registration_metadata_id_seq TO miguel;
+
+
+--
 -- Name: TABLE measurementtype_metadata; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurementtype_metadata TO "ignacio.racano";
+GRANT ALL ON TABLE public.measurementtype_metadata TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.measurementtype_metadata TO "alberto.vicente";
+GRANT SELECT ON TABLE public.measurementtype_metadata TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurementtype_metadata TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurementtype_metadata TO miguel;
 
 
 --
--- TOC entry 5162 (class 0 OID 0)
--- Dependencies: 244
+-- Name: SEQUENCE measurement_type_metadata_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.measurement_type_metadata_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.measurement_type_metadata_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.measurement_type_metadata_id_seq TO miguel;
+
+
+--
 -- Name: TABLE measurementtypes; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurementtypes TO "ignacio.racano";
+GRANT ALL ON TABLE public.measurementtypes TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.measurementtypes TO "alberto.vicente";
+GRANT SELECT ON TABLE public.measurementtypes TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurementtypes TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.measurementtypes TO miguel;
 
 
 --
--- TOC entry 5166 (class 0 OID 0)
--- Dependencies: 246
+-- Name: SEQUENCE measurementtypes_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.measurementtypes_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.measurementtypes_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.measurementtypes_id_seq TO miguel;
+
+
+--
+-- Name: TABLE onlypores; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onlypores TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onlypores TO miguel;
+
+
+--
+-- Name: SEQUENCE onlypores_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.onlypores_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.onlypores_id_seq TO miguel;
+
+
+--
+-- Name: TABLE onlypores_metadata; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onlypores_metadata TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onlypores_metadata TO miguel;
+
+
+--
+-- Name: SEQUENCE onlypores_metadata_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.onlypores_metadata_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.onlypores_metadata_id_seq TO miguel;
+
+
+--
 -- Name: TABLE panels; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.panels TO "ignacio.racano";
+GRANT ALL ON TABLE public.panels TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.panels TO "alberto.vicente";
+GRANT SELECT ON TABLE public.panels TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.panels TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.panels TO miguel;
 
 
 --
--- TOC entry 5167 (class 0 OID 0)
--- Dependencies: 248
+-- Name: SEQUENCE panel_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.panel_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.panel_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.panel_id_seq TO miguel;
+
+
+--
 -- Name: TABLE panel_metadata; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.panel_metadata TO "ignacio.racano";
+GRANT ALL ON TABLE public.panel_metadata TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.panel_metadata TO "alberto.vicente";
+GRANT SELECT ON TABLE public.panel_metadata TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.panel_metadata TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.panel_metadata TO miguel;
 
 
 --
--- TOC entry 5168 (class 0 OID 0)
--- Dependencies: 250
+-- Name: SEQUENCE panel_metadata_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.panel_metadata_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.panel_metadata_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.panel_metadata_id_seq TO miguel;
+
+
+--
 -- Name: TABLE sample_measurements; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sample_measurements TO "ignacio.racano";
+GRANT ALL ON TABLE public.sample_measurements TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.sample_measurements TO "alberto.vicente";
+GRANT SELECT ON TABLE public.sample_measurements TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sample_measurements TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sample_measurements TO miguel;
 
 
 --
--- TOC entry 5169 (class 0 OID 0)
--- Dependencies: 252
+-- Name: SEQUENCE sample_measurements_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.sample_measurements_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.sample_measurements_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.sample_measurements_id_seq TO miguel;
+
+
+--
 -- Name: TABLE sample_metadata; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sample_metadata TO "ignacio.racano";
+GRANT ALL ON TABLE public.sample_metadata TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.sample_metadata TO "alberto.vicente";
+GRANT SELECT ON TABLE public.sample_metadata TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sample_metadata TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sample_metadata TO miguel;
 
 
 --
--- TOC entry 5170 (class 0 OID 0)
--- Dependencies: 254
+-- Name: SEQUENCE sample_metadata_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.sample_metadata_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.sample_metadata_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.sample_metadata_id_seq TO miguel;
+
+
+--
 -- Name: TABLE samples; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.samples TO "ignacio.racano";
+GRANT ALL ON TABLE public.samples TO "jorge.cabrejas";
+GRANT ALL ON TABLE public.samples TO "alberto.vicente";
+GRANT SELECT ON TABLE public.samples TO claude;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.samples TO diego;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.samples TO miguel;
 
 
 --
--- TOC entry 2171 (class 826 OID 35613)
+-- Name: SEQUENCE samples_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.samples_id_seq TO "alberto.vicente";
+GRANT ALL ON SEQUENCE public.samples_id_seq TO diego;
+GRANT ALL ON SEQUENCE public.samples_id_seq TO miguel;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: meta; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA meta GRANT ALL ON SEQUENCES TO diego;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA meta GRANT ALL ON SEQUENCES TO miguel;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: meta; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA meta GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO diego;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA meta GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO miguel;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO diego;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO miguel;
+
+
+--
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: alberto.vicente
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "alberto.vicente" IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "ignacio.racano";
+ALTER DEFAULT PRIVILEGES FOR ROLE "alberto.vicente" IN SCHEMA public GRANT SELECT ON TABLES TO claude;
 
 
--- Completed on 2026-01-29 09:49:39
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO diego;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO miguel;
+
 
 --
 -- PostgreSQL database dump complete
 --
+
+\unrestrict GKAu0OOg2fgEA0zY9yvdbRZYZLR91o6rlY6YQzpkNBVhWEDjPPJ16QhIZfSoW8E
 

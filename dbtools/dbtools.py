@@ -354,6 +354,84 @@ def relation_metadata(table1_name: str, table2_name: str, intermediate_table_nam
     
     return merged_data
 
+def get_dataset_children(parent_file_path: str) -> pd.DataFrame:
+    """
+    Retrieves the child datasets of a parent dataset via the 'dataset_relations' table.
+
+    'dataset_relations' is a self-referencing link table (parent_dataset_id,
+    child_dataset_id) and so is not shaped like the two-different-tables case
+    that relation_metadata() handles; this function is its dedicated reader.
+
+    Parameters:
+    parent_file_path (str): The file_path of the parent dataset.
+
+    Returns:
+    pd.DataFrame: The child datasets (with their metadata) linked to the
+                  parent. Empty if the parent has no children.
+
+    Raises:
+    ValueError: If no dataset matches parent_file_path.
+    """
+    datasets = get_data_metadata('datasets')
+    relations = get_data('dataset_relations')
+
+    parent_match = datasets[datasets['file_path_dataset'] == parent_file_path]
+    if parent_match.empty:
+        raise ValueError(f"No dataset found with file_path '{parent_file_path}'")
+
+    parent_id = parent_match['id_dataset'].values[0]
+
+    # get_data() drops all-NaN columns, and on an empty table every column is
+    # vacuously all-NaN, so 'dataset_relations' can come back with zero
+    # columns when no relations exist yet. Treat that as "no children".
+    if 'parent_dataset_id_dataset_relation' not in relations.columns:
+        return datasets.iloc[0:0]
+
+    child_ids = relations[
+        relations['parent_dataset_id_dataset_relation'] == parent_id
+    ]['child_dataset_id_dataset_relation']
+
+    return datasets[datasets['id_dataset'].isin(child_ids)]
+
+
+def get_dataset_parents(child_file_path: str) -> pd.DataFrame:
+    """
+    Retrieves the parent datasets of a child dataset via the 'dataset_relations' table.
+
+    See get_dataset_children() for background on why this is a dedicated
+    reader rather than a call to relation_metadata().
+
+    Parameters:
+    child_file_path (str): The file_path of the child dataset.
+
+    Returns:
+    pd.DataFrame: The parent datasets (with their metadata) that contain this
+                  dataset as a child. Empty if the dataset has no parents.
+
+    Raises:
+    ValueError: If no dataset matches child_file_path.
+    """
+    datasets = get_data_metadata('datasets')
+    relations = get_data('dataset_relations')
+
+    child_match = datasets[datasets['file_path_dataset'] == child_file_path]
+    if child_match.empty:
+        raise ValueError(f"No dataset found with file_path '{child_file_path}'")
+
+    child_id = child_match['id_dataset'].values[0]
+
+    # See get_dataset_children() for why an empty relations table can come
+    # back with zero columns.
+    if 'child_dataset_id_dataset_relation' not in relations.columns:
+        return datasets.iloc[0:0]
+
+    parent_ids = relations[
+        relations['child_dataset_id_dataset_relation'] == child_id
+    ]['parent_dataset_id_dataset_relation']
+
+    return datasets[datasets['id_dataset'].isin(parent_ids)]
+
+
 def get_id(table_name,keys,values):
 
     """

@@ -214,9 +214,6 @@ def panels_submit():
             flash('Dimensions must be valid positive numbers.', 'error')
             return redirect(url_for('panels_page'))
         
-        # Get edges_cutted (checkbox)
-        edges_cutted = request.form.get('edges_cutted') == 'true'
-        
         # Get optional layer_layout
         layer_layout = None
         layer_layout_str = request.form.get('layer_layout')
@@ -271,7 +268,7 @@ def panels_submit():
                 conn = dbt.connect()
             
             # Call the load_panel function with correct parameters
-            result = load.load_panel(conn, name, material_id, fabrication_id, height, width, thickness, edges_cutted, layer_layout, description, additional_metadata)
+            result = load.load_panel(conn, name, material_id, fabrication_id, height, width, thickness, layer_layout, description, additional_metadata)
 
             if result == -1:
                 flash(f'Error loading panel "{name}".', 'error')
