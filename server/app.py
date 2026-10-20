@@ -1030,6 +1030,69 @@ def measurementtype_submit():
 
 
     
+# Foreign keys shown by name in the table views: table -> {fk column: (parent table, parent label column)}
+_FK_NAMES = {
+    'panels': {'material_id': ('materials', 'name'), 'fabrication_id': ('fabrications', 'name')},
+    'samples': {'panel_id': ('panels', 'name')},
+    'measurements': {'measurementtype_id': ('measurementtypes', 'name'),
+                     'parent_measurement_id': ('measurements', 'file_path')},
+}
+
+_TABLE_VIEWS = [
+    ('materials', 'Materials', 'view_table', {'table_name': 'materials'}),
+    ('fabrications', 'Fabrications', 'view_table', {'table_name': 'fabrications'}),
+    ('panels', 'Panels', 'view_table', {'table_name': 'panels'}),
+    ('samples', 'Samples', 'view_table', {'table_name': 'samples'}),
+    ('measurementtypes', 'Measurement Types', 'view_table', {'table_name': 'measurementtypes'}),
+    ('measurements_samples', 'Measurements', 'view_relational_table',
+     {'main_table_name': 'measurements', 'secondary_table_name': 'samples',
+      'relational_table': 'sample_measurements'}),
+]
+
+
+def _table_views():
+    """Navigation entries (key, label, url) for all table views."""
+    return [(key, label, url_for(endpoint, **kwargs)) for key, label, endpoint, kwargs in _TABLE_VIEWS]
+
+
+def _clean_table(df, table_name):
+    """Strip the table suffix from the columns, add FK name columns and order the columns.
+
+    Order: id, name/file_path, FK columns (id followed by its name), other base columns, then metadata columns.
+    """
+    suffix = '_' + table_name[:-1]
+    df = df.rename(columns=lambda c: c[:-len(suffix)] if c.endswith(suffix) else c)
+    base_cols = [c for c in df.columns if c in ('id', 'name', 'file_path', 'description')
+                 or c.endswith('_id')]
+
+    for fk_col, (parent, label_col) in _FK_NAMES.get(table_name, {}).items():
+        if fk_col not in df.columns:
+            continue
+        parent_df = dbt.get_data(parent)
+        parent_suffix = '_' + parent[:-1]
+        labels = dict(zip(parent_df['id' + parent_suffix], parent_df[label_col + parent_suffix]))
+        name_col = fk_col[:-3] + '_name' if fk_col != 'parent_measurement_id' else 'parent_measurement'
+        df.insert(df.columns.get_loc(fk_col) + 1, name_col, df[fk_col].map(labels))
+        base_cols.insert(base_cols.index(fk_col) + 1, name_col)
+
+    # nullable FK columns arrive as float (252.0) when they contain NULLs
+    for col in df.columns:
+        if col.endswith('_id') and df[col].dtype == float:
+            df[col] = df[col].astype('Int64')
+
+    lead = [c for c in ('id', 'name', 'file_path') if c in df.columns]
+    rest_base = [c for c in base_cols if c not in lead]
+    metadata = sorted(c for c in df.columns if c not in lead and c not in rest_base)
+    return df[lead + rest_base + metadata]
+
+
+def _df_to_table_data(df):
+    """Convert a DataFrame to JSON-safe {'columns', 'data'} (NaN/None -> '')."""
+    df = df.astype(object).where(df.notna(), '')
+    data = [[v.item() if hasattr(v, 'item') else v for v in row] for row in df.values.tolist()]
+    return {'columns': [str(c) for c in df.columns], 'data': data}
+
+
 @app.route('/view_table/<table_name>')
 def view_table(table_name):
     """Generic function to view any table in the database using interactive dataframe."""
@@ -1039,70 +1102,53 @@ def view_table(table_name):
         if table_name not in valid_tables:
             flash(f'Invalid table name: {table_name}', 'error')
             return redirect(url_for('index'))
-        
-        # Use the reference view_table approach
-        table_df = dbt.get_data_metadata(table_name)
-        
-        # Handle NaN values for JSON serialization
-        table_df = table_df.fillna('')
-        
-        # Convert DataFrame to dictionary format for JSON serialization
-        table_data = {
-            'columns': table_df.columns.tolist(),
-            'data': table_df.values.tolist()
-        }
-        
-        # Create a title from table name (capitalize and handle plurals)
-        table_title = table_name.replace('_', ' ').title()
-        
-        return render_template('view_table_interactive.html', 
-                             table_data=table_data, 
+
+        table_df = _clean_table(dbt.get_data_metadata(table_name), table_name)
+
+        return render_template('view_table_interactive.html',
+                             table_data=_df_to_table_data(table_df),
                              table_name=table_name,
-                             table_title=table_title)
-        
+                             table_title=table_name.replace('_', ' ').title(),
+                             views=_table_views(),
+                             current_view=table_name)
+
     except Exception as e:
         flash(f'Error fetching data from {table_name}: {str(e)}', 'error')
         return redirect(url_for('index'))
 
 @app.route('/view_relational_table/<main_table_name>/<secondary_table_name>/<relational_table>')
 def view_relational_table(main_table_name, secondary_table_name, relational_table):
-    """Generic function to view relational tables for example, if you want to see the measurements, they have samples related to them
-    So the input of this function would be main_table_name = 'measurements', secondary_table_name = 'samples', relational_table = 'sample_measurements'
-    the table will have this format, all the columns from the main table will be columnname_maintablename[:-1], for example id_measurement.
-    The same will happen with the secondary table, all the columns will be columnname_secondarytablename[:-1], for example id_sample.
-    The idea is to have a view that for each row of the main table, you can see the related rows of the secondary table. Without seeing repeated the main row"""
+    """View measurements with their linked samples collapsed into one row per measurement.
 
+    Only the measurements/samples/sample_measurements combination is supported. The sample names of
+    each measurement go in the 'samples' column (comma-separated) and their count in 'n_samples'.
+    """
     try:
         # Validate table names to prevent SQL injection
-        valid_tables = ['samples', 'measurements']
-        valid_relational_tables = ['sample_measurements']
-        
-        if (main_table_name not in valid_tables or 
-            secondary_table_name not in valid_tables or 
-            relational_table not in valid_relational_tables):
+        if (main_table_name, secondary_table_name, relational_table) != ('measurements', 'samples', 'sample_measurements'):
             flash(f'Invalid table combination: {main_table_name}, {secondary_table_name}, {relational_table}', 'error')
             return redirect(url_for('index'))
-        
-        # Use the relational metadata function
-        table_df = dbt.relation_metadata(main_table_name, secondary_table_name, relational_table)
-        
-        # Handle NaN values for JSON serialization
-        table_df = table_df.fillna('')
-        
-        # Convert DataFrame to dictionary format for JSON serialization
-        table_data = {
-            'columns': table_df.columns.tolist(),
-            'data': table_df.values.tolist()
-        }
-        
-        # Create a title for the relational view
-        table_title = f"{main_table_name.title()} with Related {secondary_table_name.title()}"
-        
-        return render_template('view_table_interactive.html', 
-                             table_data=table_data, 
-                             table_name=f"{main_table_name}_{secondary_table_name}",
-                             table_title=table_title)
-        
+
+        table_df = _clean_table(dbt.get_data_metadata('measurements'), 'measurements')
+
+        links = dbt.get_data('sample_measurements')
+        sample_names = dbt.get_data('samples').set_index('id_sample')['name_sample']
+        grouped = {}
+        if not links.empty:
+            links = links.assign(sample_name=links['sample_id_sample_measurement'].map(sample_names))
+            for measurement_id, names in links.groupby('measurement_id_sample_measurement')['sample_name']:
+                grouped[measurement_id] = sorted(str(n) for n in names)
+
+        table_df['samples'] = table_df['id'].map(lambda i: ', '.join(grouped.get(i, [])))
+        table_df['n_samples'] = table_df['id'].map(lambda i: len(grouped.get(i, [])))
+
+        return render_template('view_table_interactive.html',
+                             table_data=_df_to_table_data(table_df),
+                             table_name='measurements_samples',
+                             table_title='Measurements with Related Samples',
+                             views=_table_views(),
+                             current_view='measurements_samples')
+
     except Exception as e:
         flash(f'Error fetching data from {main_table_name} and {secondary_table_name}: {str(e)}', 'error')
         return redirect(url_for('index'))
