@@ -1,35 +1,37 @@
-import dbtools as dbt
-
-def delete(conn,table_name,ids):
+def delete(conn, table_name, ids):
     """
     Deletes rows from a specified table in the database based on a list of IDs.
 
+    The delete runs in one transaction: it is committed on success and rolled back,
+    with the exception re-raised, on error (e.g. a foreign key violation).
+
     Parameters:
     conn (object): Database connection object.
-    table_name (str): Name of the table from which to delete rows.
+    table_name (str): Name of the table from which to delete rows. Must be a trusted value.
     ids (list): List of IDs of the rows to be deleted.
 
     Returns:
-    None
+    int: Number of rows deleted.
     """
     if len(ids) == 0:
-        return
-    
+        return 0
+
     #convert ids to int
     ids = [int(i) for i in ids]
-    
-    cursor = conn.cursor()
-    conn.autocommit = False  # Start transaction
 
-    placeholders = ', '.join(['%s'] * len(ids))
-    query = f"DELETE FROM {table_name} WHERE id IN ({placeholders})"
+    conn.autocommit = False  # Start transaction
+    cursor = conn.cursor()
+    query = f"DELETE FROM {table_name} WHERE id = ANY(%s)"
 
     try:
-        cursor.execute(query, ids)
-    except Exception as e:
-        conn.rollback()  # Rollback transaction on error
-        print(f"Error occurred: {e}")
-    finally:
-        print(f"Deleted {cursor.rowcount} rows from {table_name} where id is in {ids}")
+        cursor.execute(query, (ids,))
+        deleted = cursor.rowcount
         conn.commit()
+    except Exception:
+        conn.rollback()  # Rollback transaction on error
+        raise
+    finally:
         cursor.close()
+
+    print(f"Deleted {deleted} rows from {table_name} where id is in {ids}")
+    return deleted

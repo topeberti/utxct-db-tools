@@ -16,6 +16,8 @@ from preprocess_tools import io
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import dbtools.dbtools as dbt
 import dbtools.load as load
+from dbtools.delete import delete as delete_rows
+import psycopg2.errors
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Needed for flash messages
@@ -1078,7 +1080,103 @@ def measurementtype_submit():
     return redirect(url_for('measurementtype_page'))
 
 
-    
+
+_VIEWABLE_TABLES = ['materials', 'fabrications', 'panels', 'samples', 'measurements', 'measurementtypes']
+
+# Column that names a row, used as the text the user must type to confirm a delete
+_LABEL_COLUMN = {t: 'name' for t in _VIEWABLE_TABLES}
+_LABEL_COLUMN['measurements'] = 'file_path'
+
+# Rows in other tables that reference a row: table -> [(child table, fk column, 'cascade' | 'block')]
+# 'cascade' children are deleted with the row (ON DELETE CASCADE), 'block' children make the delete fail.
+_DELETE_DEPENDENCIES = {
+    'materials': [('material_metadata', 'material_id', 'cascade'), ('panels', 'material_id', 'block')],
+    'fabrications': [('fabrication_metadata', 'fabrication_id', 'cascade'), ('panels', 'fabrication_id', 'block')],
+    'panels': [('panel_metadata', 'panel_id', 'cascade'), ('samples', 'panel_id', 'block')],
+    'samples': [('sample_metadata', 'sample_id', 'cascade'), ('sample_measurements', 'sample_id', 'cascade')],
+    'measurementtypes': [('measurementtype_metadata', 'measurementtype_id', 'cascade'),
+                         ('measurements', 'measurementtype_id', 'block')],
+    'measurements': [('measurement_metadata', 'measurement_id', 'cascade'),
+                     ('sample_measurements', 'measurement_id', 'cascade'),
+                     ('onlypores', 'measurement_id', 'cascade'),
+                     ('registrations', 'reference_measurement_id', 'cascade'),
+                     ('registrations', 'registered_measurement_id', 'cascade'),
+                     ('measurements', 'parent_measurement_id', 'block')],
+}
+
+
+def _delete_target(table_name):
+    """Map a view's table name to the table whose rows it shows, or None if not deletable."""
+    if table_name == 'measurements_samples':
+        table_name = 'measurements'
+    return table_name if table_name in _VIEWABLE_TABLES else None
+
+
+def _row_label(cursor, table, row_id):
+    """Label of a row, or None if the row does not exist."""
+    cursor.execute(f"SELECT {_LABEL_COLUMN[table]} FROM {table} WHERE id = %s", (row_id,))
+    found = cursor.fetchone()
+    return None if found is None else str(found[0])
+
+
+@app.route('/delete_preview/<table_name>/<int:row_id>')
+def delete_preview(table_name, row_id):
+    """JSON summary of what deleting a row would remove (cascade) or be blocked by (block)."""
+    global conn
+    table = _delete_target(table_name)
+    if table is None:
+        return jsonify({'error': f'Invalid table name: {table_name}'}), 400
+    if conn is None or conn.closed:
+        conn = dbt.connect()
+    try:
+        with conn.cursor() as cursor:
+            label = _row_label(cursor, table, row_id)
+            if label is None:
+                return jsonify({'error': 'Row not found'}), 404
+            counts = {'cascade': {}, 'block': {}}
+            for child, fk_col, kind in _DELETE_DEPENDENCIES.get(table, []):
+                cursor.execute(f"SELECT count(*) FROM {child} WHERE {fk_col} = %s", (row_id,))
+                n = cursor.fetchone()[0]
+                if n:
+                    counts[kind][child] = counts[kind].get(child, 0) + n
+        conn.rollback()  # read only, end the implicit transaction
+        return jsonify({'label': label, 'cascade': counts['cascade'], 'blocking': counts['block']})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/delete_row/<table_name>/<int:row_id>', methods=['POST'])
+def delete_row(table_name, row_id):
+    """Delete one row after the user typed its label; the label is checked again here."""
+    global conn
+    table = _delete_target(table_name)
+    if table is None:
+        flash(f'Invalid table name: {table_name}', 'error')
+        return redirect(url_for('index'))
+
+    back = redirect(request.referrer or url_for('view_table', table_name=table))
+    if conn is None or conn.closed:
+        conn = dbt.connect()
+    try:
+        with conn.cursor() as cursor:
+            label = _row_label(cursor, table, row_id)
+        conn.rollback()  # read only, end the implicit transaction
+        if label is None:
+            flash(f'Row {row_id} not found in {table}.', 'error')
+            return back
+        if request.form.get('confirm_text', '').strip() != label.strip():
+            flash(f'Confirmation text did not match. Nothing was deleted from {table}.', 'error')
+            return back
+        delete_rows(conn, table, [row_id])
+        flash(f'Deleted "{label}" (id {row_id}) from {table}.', 'success')
+    except psycopg2.errors.ForeignKeyViolation:
+        flash(f'Cannot delete "{label}": other rows still reference it. Delete those first.', 'error')
+    except Exception as e:
+        flash(f'Error deleting row {row_id} from {table}: {str(e)}', 'error')
+    return back
+
+
 # Foreign keys shown by name in the table views: table -> {fk column: (parent table, parent label column)}
 _FK_NAMES = {
     'panels': {'material_id': ('materials', 'name'), 'fabrication_id': ('fabrications', 'name')},
@@ -1147,8 +1245,7 @@ def view_table(table_name):
     """Generic function to view any table in the database using interactive dataframe."""
     try:
         # Validate table name to prevent SQL injection
-        valid_tables = ['materials', 'fabrications', 'panels', 'samples', 'measurements', 'measurementtypes']
-        if table_name not in valid_tables:
+        if table_name not in _VIEWABLE_TABLES:
             flash(f'Invalid table name: {table_name}', 'error')
             return redirect(url_for('index'))
 

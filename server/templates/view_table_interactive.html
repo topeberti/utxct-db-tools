@@ -119,6 +119,79 @@
             background-color: #0069d9;
         }
 
+        .btn.danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+            color: white;
+        }
+
+        .btn.danger:hover {
+            background-color: #c82333;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .detail-actions {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 6px;
+            padding: 24px;
+            width: 480px;
+            max-width: 90vw;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            color: #dc3545;
+        }
+
+        .modal ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .modal .blocking {
+            color: #721c24;
+            background: #f8d7da;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+
+        .modal input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px;
+            margin-top: 6px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
         /* Column Visibility Controls */
         .column-controls {
             margin-top: 15px;
@@ -762,8 +835,122 @@
             });
 
             td.appendChild(grid);
+
+            const rowId = row[tableData.columns.indexOf('id')];
+            if (!isEmpty(rowId)) {
+                const actions = document.createElement('div');
+                actions.className = 'detail-actions';
+                const del = document.createElement('button');
+                del.className = 'btn danger';
+                del.textContent = 'Delete row';
+                del.addEventListener('click', e => {
+                    e.stopPropagation();
+                    openDeleteModal(rowId);
+                });
+                actions.appendChild(del);
+                td.appendChild(actions);
+            }
+
             tr.appendChild(td);
             return tr;
+        }
+
+        // Two-step delete: (1) review what will be removed, (2) type the row label to confirm.
+        // The server checks the typed label again.
+        async function openDeleteModal(rowId) {
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop';
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            backdrop.appendChild(modal);
+
+            const close = () => { backdrop.remove(); document.removeEventListener('keydown', onKey); };
+            const onKey = e => { if (e.key === 'Escape') close(); };
+            document.addEventListener('keydown', onKey);
+            backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+            const title = document.createElement('h2');
+            title.textContent = 'Delete row ' + rowId + '?';
+            const body = document.createElement('div');
+            body.textContent = 'Loading...';
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '/delete_row/' + encodeURIComponent(tableName) + '/' + encodeURIComponent(rowId);
+
+            const cancel = document.createElement('button');
+            cancel.type = 'button';
+            cancel.className = 'btn';
+            cancel.textContent = 'Cancel';
+            cancel.addEventListener('click', close);
+            const confirmBtn = document.createElement('button');
+            confirmBtn.type = 'submit';
+            confirmBtn.className = 'btn danger';
+            confirmBtn.textContent = 'Delete permanently';
+            confirmBtn.disabled = true;
+
+            modal.append(title, body);
+            document.body.appendChild(backdrop);
+            cancel.focus();
+
+            let info;
+            try {
+                const resp = await fetch('/delete_preview/' + encodeURIComponent(tableName) + '/' + encodeURIComponent(rowId));
+                info = await resp.json();
+                if (!resp.ok) throw new Error(info.error || resp.statusText);
+            } catch (err) {
+                body.textContent = 'Could not load delete preview: ' + err.message;
+                const actions = document.createElement('div');
+                actions.className = 'modal-actions';
+                actions.appendChild(cancel);
+                modal.appendChild(actions);
+                cancel.focus();
+                return;
+            }
+
+            body.textContent = '';
+            const lead = document.createElement('p');
+            lead.textContent = 'You are about to permanently delete "' + info.label + '". This cannot be undone.';
+            body.appendChild(lead);
+
+            const listCounts = (counts, heading, cls) => {
+                const entries = Object.entries(counts);
+                if (!entries.length) return;
+                const box = document.createElement('div');
+                if (cls) box.className = cls;
+                box.appendChild(document.createTextNode(heading));
+                const ul = document.createElement('ul');
+                entries.forEach(([name, n]) => {
+                    const li = document.createElement('li');
+                    li.textContent = n + ' row(s) in ' + name;
+                    ul.appendChild(li);
+                });
+                box.appendChild(ul);
+                body.appendChild(box);
+            };
+            listCounts(info.cascade, 'These linked rows will also be deleted:');
+            const blocked = Object.keys(info.blocking).length > 0;
+            listCounts(info.blocking, 'Cannot delete: these rows still reference it. Delete them first:', 'blocking');
+
+            const actions = document.createElement('div');
+            actions.className = 'modal-actions';
+            if (!blocked) {
+                const prompt = document.createElement('label');
+                prompt.textContent = 'Type "' + info.label + '" to confirm:';
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = 'confirm_text';
+                input.autocomplete = 'off';
+                input.addEventListener('input', () => {
+                    confirmBtn.disabled = input.value.trim() !== info.label.trim();
+                });
+                form.append(prompt, input);
+                actions.append(cancel, confirmBtn);
+            } else {
+                actions.appendChild(cancel);
+            }
+            form.appendChild(actions);
+            modal.appendChild(form);
+            cancel.focus();
         }
 
         function copyText(text, button) {
