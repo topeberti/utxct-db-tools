@@ -4,9 +4,13 @@
         {
             "label": "Run Server",
             "type": "shell",
-            "command": "conda activate sql; cd ./server; python .\\app.py",
+            "command": "bash \"${workspaceFolder}/.vscode/run_server.sh\"",
             "isBackground": true,
             "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true
