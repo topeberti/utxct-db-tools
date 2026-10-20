@@ -183,24 +183,11 @@
             
             <!-- Container for dynamic metadata fields -->
             <div id="metadata-container">
-                <!-- Dynamic metadata fields will be added here -->
+                {% include '_common_metadata.html' %}
             </div>
             
             <button type="button" class="add-metadata" onclick="addMetadataField()">Add Property</button>
             
-            <!-- Common Properties Helper -->
-            <div class="metadata-examples">
-                <h5>Common Properties:</h5>
-                <ul>
-                    <li><strong>layer_thickness:</strong> 0.2 (mm)</li>
-                    <li><strong>fiber_type:</strong> Hexcel2765 (nominal)</li>
-                    <li><strong>resin_type:</strong> Hexcel0003 (nominal)</li>
-                    <li><strong>prepreg_name:</strong> ProPregHFC (nominal), comercial preperg name</li>
-                    <li><strong>prepreg_type:</strong> 12h dwell + high viscosity... (text), extended prepreg properties</li>
-
-
-                </ul>
-            </div>
         </div>
         
         <button type="submit">Save Material</button>

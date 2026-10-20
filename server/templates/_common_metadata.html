@@ -1,0 +1,17 @@
+{% for meta in common_metadata %}
+<div class="metadata-item" data-suggested>
+    <input type="text" name="metadata_key[]" value="{{ meta.key }}" readonly style="background-color: #eee;">
+    <input type="text" name="metadata_value[]" placeholder="Value">
+    <input type="text" name="metadata_type[]" value="{{ meta.type }}" readonly style="background-color: #eee;">
+    <button type="button" class="remove-metadata" onclick="removeMetadataField(this)">Remove</button>
+</div>
+{% endfor %}
+<script>
+    // Blank suggested rows are not sent: disabled inputs are left out of the form data.
+    document.currentScript.closest('form').addEventListener('submit', () => {
+        document.querySelectorAll('.metadata-item[data-suggested]').forEach(row => {
+            if (!row.querySelector('[name="metadata_value[]"]').value.trim())
+                row.querySelectorAll('input').forEach(i => i.disabled = true);
+        });
+    });
+</script>

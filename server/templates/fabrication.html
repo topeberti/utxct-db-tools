@@ -168,21 +168,11 @@
             
             <!-- Container for dynamic metadata fields -->
             <div id="metadata-container">
-                <!-- Dynamic metadata fields will be added here -->
+                {% include '_common_metadata.html' %}
             </div>
             
             <button type="button" class="add-metadata" onclick="addMetadataField()">Add Metadata Field</button>
             
-            <div class="metadata-examples">
-                <h5>Example metadata:</h5>
-                <ul>
-                    <li><strong>hand_lay_up:</strong> True (bool)</li>
-                    <li><strong>vacuum_bag:</strong> True (bool)</li>
-                    <li><strong>autoclave:</strong> True (bool)</li>
-                    <li><strong>pressure:</strong> 6 (bar)</li>
-                    <li><strong>temperature_ramp:</strong> 10°C/min to 180°C - 2h dwell - 2.5°C/min cooling (text)</li>
-                </ul>
-            </div>
         </div>
         
         <button type="submit">Save Fabrication Method</button>

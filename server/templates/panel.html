@@ -324,18 +324,11 @@
             
             <!-- Container for dynamic metadata fields -->
             <div id="metadata-container">
-                <!-- Dynamic metadata fields will be added here -->
+                {% include '_common_metadata.html' %}
             </div>
             
             <button type="button" class="add-metadata" onclick="addMetadataField()">Add Property</button>
             
-            <!-- Common Properties Helper -->
-            <div class="metadata-examples">
-                <h5>Common Properties:</h5>
-                <ul>
-                    <li><strong>geometry:</strong> parallel faces (text) - A description of the panel geometry</li>
-                </ul>
-            </div>
         </div>
         
         <button type="submit">Save Panel</button>

@@ -23,6 +23,43 @@ app.secret_key = 'your_secret_key'  # Needed for flash messages
 # Global connection object
 conn = None
 
+# Keys the load functions write from dedicated form fields (not offered as free metadata rows)
+_MEASUREMENT_FIXED_KEYS = ('height', 'width', 'depth', 'dtype', 'file_type', 'signal_type',
+                           'aligned', 'equalized', 'axes_order', 'transformations')
+
+
+def _common_metadata(table, exclude=(), marker_key=None):
+    """(key, type) pairs used at least twice in a metadata table, most used first.
+
+    `table` must be a hard-coded metadata table name. `marker_key` restricts measurement_metadata
+    to measurements that have that key (signal_type -> UT, aligned -> XCT).
+    """
+    global conn
+    try:
+        if conn is None or conn.closed:
+            conn = dbt.connect()
+        params = [list(exclude)]
+        marker_filter = ''
+        if marker_key:
+            marker_filter = ("AND measurement_id IN "
+                             "(SELECT measurement_id FROM measurement_metadata WHERE key = %s)")
+            params.append(marker_key)
+        cursor = conn.cursor()
+        cursor.execute(
+            f"SELECT key, type FROM {table} "
+            f"WHERE key <> ALL(%s) AND type IS NOT NULL AND type <> '' {marker_filter} "
+            "GROUP BY key, type HAVING COUNT(*) >= 2 "
+            "ORDER BY COUNT(*) DESC, key",
+            params
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+        return [{'key': key, 'type': meta_type} for key, meta_type in rows]
+    except Exception:
+        if conn is not None and not conn.closed:
+            conn.rollback()
+        return []
+
 @app.route('/')
 def index():
     """Render the main menu page."""
@@ -31,7 +68,8 @@ def index():
 @app.route('/materials')
 def materials_page():
     """Render the materials form page."""
-    return render_template('materials.html')
+    return render_template('materials.html',
+                           common_metadata=_common_metadata('material_metadata', ('layer_thickness',)))
 
 @app.route('/materials/submit', methods=['GET', 'POST'])
 def materials_submit():
@@ -170,7 +208,9 @@ def panels_page():
             })
         
         cursor.close()
-        return render_template('panel.html', materials=formatted_materials, fabrications=formatted_fabrications)
+        return render_template('panel.html', materials=formatted_materials, fabrications=formatted_fabrications,
+                               common_metadata=_common_metadata(
+                                   'panel_metadata', ('height', 'width', 'thickness', 'layer_layout')))
     
     except Exception as e:
         flash(f'Error loading data for panel form: {str(e)}', 'error')
@@ -349,7 +389,10 @@ def samples_page():
             })
         
         cursor.close()
-        return render_template('sample.html', panels=formatted_panels)
+        return render_template('sample.html', panels=formatted_panels,
+                               common_metadata=_common_metadata(
+                                   'sample_metadata',
+                                   ('height', 'width', 'thickness', 'keyhole', 'parallel_faces')))
     
     except Exception as e:
         flash(f'Error loading panels for sample form: {str(e)}', 'error')
@@ -492,9 +535,11 @@ def ut_measurements_page():
             })
         
         cursor.close()
-        return render_template('ut_measurement.html', 
+        return render_template('ut_measurement.html',
                               measurement_types=formatted_measurement_types,
-                              samples=formatted_samples)
+                              samples=formatted_samples,
+                              common_metadata=_common_metadata(
+                                  'measurement_metadata', _MEASUREMENT_FIXED_KEYS, marker_key='signal_type'))
     
     except Exception as e:
         flash(f'Error loading form data: {str(e)}', 'error')
@@ -683,9 +728,11 @@ def xct_measurements_page():
             })
         
         cursor.close()
-        return render_template('xct_measurement.html', 
+        return render_template('xct_measurement.html',
                               measurement_types=formatted_measurement_types,
-                              samples=formatted_samples)
+                              samples=formatted_samples,
+                              common_metadata=_common_metadata(
+                                  'measurement_metadata', _MEASUREMENT_FIXED_KEYS, marker_key='aligned'))
     
     except Exception as e:
         flash(f'Error loading form data: {str(e)}', 'error')
@@ -886,7 +933,8 @@ def get_file_info():
 @app.route('/fabrication')
 def fabrication_page():
     """Render the fabrication form page."""
-    return render_template('fabrication.html')
+    return render_template('fabrication.html',
+                           common_metadata=_common_metadata('fabrication_metadata'))
 
 @app.route('/fabrication/submit', methods=['GET', 'POST'])
 def fabrication_submit():
@@ -961,7 +1009,8 @@ def view_fabrications():
 @app.route('/measurementtype')
 def measurementtype_page():
     """Render the measurement type form page."""
-    return render_template('measurementtype.html')
+    return render_template('measurementtype.html',
+                           common_metadata=_common_metadata('measurementtype_metadata'))
 
 @app.route('/measurementtype/submit', methods=['GET', 'POST'])
 def measurementtype_submit():
